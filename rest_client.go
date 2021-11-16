@@ -110,20 +110,22 @@ func getPeerKey(peer string) ([]byte, error) {
 	}
 }
 
-func getPeerRoot(peer string) ([]byte, error) {
+func getPeerRoot(peer string) ([32]byte, error) {
+	h := [32]byte{}
 	body, r, err := getHttpRequestResponseBody("GET", peerRootUrl(peer))
 	if err != nil {
-		return nil, err
+		return h, err
 	}
 	if len(body) != sha256.Size {
-		return nil, ErrWrongHashSize
+		return h, ErrWrongHashSize
 	}
 	switch r.StatusCode {
 	case 404:
-		return nil, ErrNotFound
+		return h, ErrNotFound
 	case 204:
-		return nil, ErrNoRoot
+		return h, ErrNoRoot
 	default:
-		return body, nil
+		copy(h[:], body[32:])
+		return h, nil
 	}
 }

@@ -98,6 +98,21 @@ func makeRootReply(id uint32, hash [32]byte, node *Node) ([]byte, error) {
 	return h, nil
 }
 
+func makeGetDatum(id uint32, hash [32]byte, node *Node) ([]byte, error) {
+	packetLength := hashLength
+	h := make([]byte, headerLength+packetLength+signatureLength)
+	binary.BigEndian.PutUint32(h[0:4], id)
+	h[4] = errorType
+	binary.BigEndian.PutUint16(h[5:headerLength], uint16(packetLength))
+	copy(h[headerLength:], hash[:])
+	sign, err := signECDSA(node.privateKey, h[:headerLength+packetLength])
+	if err != nil {
+		return nil, err
+	}
+	copy(h[headerLength+packetLength:], sign)
+	return h, nil
+}
+
 func makeError(id uint32, errorMessage string, node *Node) ([]byte, error) {
 	errLength := len(errorMessage)
 	packetLength := errLength

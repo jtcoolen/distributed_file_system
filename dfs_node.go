@@ -49,6 +49,12 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 		log.Printf("%s", err)
 	case rootReplyType:
 		log.Printf("RootReply from %s", addr)
+	case getDatumType:
+		log.Printf("GetDatum from %s", addr)
+	case datumType:
+		log.Printf("Datum(%x) from %s", packet[headerLength:headerLength+int(packetLength)], addr)
+	case noDatumType:
+		log.Printf("NoDatum from %s", addr)
 	case errorType:
 		log.Printf("Error: %s from %s", string(packet[headerLength:headerLength+int(packetLength)]), addr)
 	default:
@@ -126,6 +132,9 @@ func main() {
 	// for i := 0; i < runtime.NumCPU(); i++
 	go receiveIncomingMessages(&node)
 
+	juliuszRoot, _ := getPeerRoot(juliusz)
+
+	time.Sleep(helloPeriod)
 	for {
 	}
 }

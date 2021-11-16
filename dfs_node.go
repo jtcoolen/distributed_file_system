@@ -23,11 +23,12 @@ var client_name = "test2"
 func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 	packetType := packet[4]
 	id := binary.BigEndian.Uint32(packet[0:4])
+	packetLength := binary.BigEndian.Uint16(packet[5:headerLength])
 	switch packetType {
 	case helloType:
 		log.Printf("Hello from %s", addr)
 	case helloReplyType:
-		log.Printf("HelloReply from %s", addr)
+		log.Printf("HelloReply(%s) from %s", packet[headerLength:headerLength+int(packetLength)], addr)
 	case publicKeyType:
 		log.Printf("Public Key from %s", addr)
 		reply, err := makePublicKeyReply(id, node)
@@ -37,9 +38,9 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 		}
 		log.Printf("%s", err)
 	case publicKeyReplyType:
-		log.Printf("publicKeyReply from %s", addr)
+		log.Printf("publicKeyReply(%x) from %s", packet[headerLength:headerLength+int(packetLength)], addr)
 	case rootType:
-		log.Printf("Root from %s", addr)
+		log.Printf("Root(%x) from %s", packet[headerLength:headerLength+int(packetLength)], addr)
 		reply, err := makeRootReply(id, sha256.Sum256([]byte("")), node)
 		if err == nil {
 			node.conn.WriteToUDP(reply, addr)
@@ -49,7 +50,7 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 	case rootReplyType:
 		log.Printf("RootReply from %s", addr)
 	case errorType:
-		log.Printf("Error: %s from %s", string(packet[headerLength:]), addr)
+		log.Printf("Error: %s from %s", string(packet[headerLength:headerLength+int(packetLength)]), addr)
 	default:
 		log.Printf("Packet type=%d from %s", packetType, addr)
 

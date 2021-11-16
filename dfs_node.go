@@ -2,32 +2,24 @@ package main
 
 import (
 	"crypto/ecdsa"
-	"crypto/elliptic"
-	"crypto/rand"
 	"encoding/binary"
 	"log"
 	"net"
 	"time"
 )
 
+type Node struct {
+	name               string
+	privateKey         *ecdsa.PrivateKey
+	publicKey          *ecdsa.PublicKey
+	formattedPublicKey []byte
+	conn               *net.UDPConn
+	bootstrapAddresses [][]byte
+}
+
 var client_name = "test"
 
-func genECDSAKeyPair() (*ecdsa.PublicKey, *ecdsa.PrivateKey, error) {
-	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	if err != nil {
-		return nil, nil, err
-	}
-	return &privateKey.PublicKey, privateKey, nil
-}
-
-func formattedECDSAPublicKey(publicKey *ecdsa.PublicKey) []byte {
-	formatted := make([]byte, 64)
-	publicKey.X.FillBytes(formatted[:32])
-	publicKey.Y.FillBytes(formatted[32:])
-	return formatted
-}
-
-func processIncomingPacket(conn *net.UDPConn, addr *net.UDPAddr, packet []byte, pubKey []byte) {
+func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 	packetType := packet[4]
 	id := binary.BigEndian.Uint32(packet[0:4])
 	switch packetType {
@@ -35,7 +27,7 @@ func processIncomingPacket(conn *net.UDPConn, addr *net.UDPAddr, packet []byte, 
 		log.Printf("Hello from %s", addr)
 	case publicKeyType:
 		log.Printf("Public Key from %s", addr)
-		conn.WriteToUDP(makePublicKeyReply(id, pubKey), addr)
+		node.conn.WriteToUDP(makePublicKeyReply(id, node.formattedPublicKey[:]), addr)
 	case publicKeyReplyType:
 		log.Printf("publicKeyReply from %s", addr)
 	case helloReplyType:
@@ -48,40 +40,40 @@ func processIncomingPacket(conn *net.UDPConn, addr *net.UDPAddr, packet []byte, 
 	}
 }
 
-func sendPeriodicHello(conn *net.UDPConn, addresses [][]byte, publicKey []byte) {
+func sendPeriodicHello(node *Node) {
 	for {
-		for _, addr := range addresses {
+		for _, addr := range node.bootstrapAddresses {
 			dst, err := net.ResolveUDPAddr("udp", string(addr))
 			if err != nil {
 				log.Fatal(err)
 			}
-			conn.WriteToUDP(makeHello(1, client_name), dst)
+			node.conn.WriteToUDP(makeHello(1, client_name), dst)
 			// the protocol requires an Id different from 0 for unsolicited messages
 		}
 		time.Sleep(helloPeriod)
 	}
 }
 
-func receiveIncomingMessages(connection *net.UDPConn, pubKey []byte) {
+func receiveIncomingMessages(node *Node) {
 	for {
 		buffer := make([]byte, 1024)
 		n, remoteAddr, err := 0, new(net.UDPAddr), error(nil)
 		for err == nil {
-			n, remoteAddr, err = connection.ReadFromUDP(buffer)
-			go processIncomingPacket(connection, remoteAddr, buffer[:n], pubKey)
+			n, remoteAddr, err = node.conn.ReadFromUDP(buffer)
+			go processIncomingPacket(node, remoteAddr, buffer[:n])
 		}
 	}
 }
 
 func main() {
 
-	publicKey, _, err := genECDSAKeyPair()
+	publicKey, privateKey, err := genECDSAKeyPair()
 	if err != nil {
 		log.Fatal("Couldn't generate ECDSA key pair")
 		return
 	}
 
-	formattedPublicKey := formattedECDSAPublicKey(publicKey)
+	formattedPublicKey := getFormattedECDSAPublicKey(publicKey)
 
 	juliuszAddresses, err := getPeerAddresses(juliusz)
 	if err != nil {
@@ -98,16 +90,18 @@ func main() {
 		IP:   net.IP{0, 0, 0, 0}, // listen to all addresses
 	}
 
-	connection, err := net.ListenUDP("udp", &addr)
+	conn, err := net.ListenUDP("udp", &addr)
 	if err != nil {
 		panic(err)
 	}
 
+	node := Node{client_name, privateKey, publicKey, formattedPublicKey, conn, juliuszAddresses}
+
 	//quit := make(chan struct{})
 
-	go sendPeriodicHello(connection, juliuszAddresses, formattedPublicKey)
+	go sendPeriodicHello(&node)
 	// for i := 0; i < runtime.NumCPU(); i++
-	go receiveIncomingMessages(connection, formattedPublicKey)
+	go receiveIncomingMessages(&node)
 
 	for {
 	}

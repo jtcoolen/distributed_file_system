@@ -9,6 +9,7 @@ var juliusz = "jch.irif.fr"
 
 var hashLength = sha256.Size
 var publicKeyLength = 64
+var signatureLength = 64
 
 var helloPeriod time.Duration = 30 * time.Second
 

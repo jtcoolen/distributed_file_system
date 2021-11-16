@@ -7,64 +7,109 @@ import (
 var headerLength = 7
 var extensionsLength = 4
 
-func makeHello(id uint32, name string) []byte {
-	nameLength := len(name)
-	h := make([]byte, headerLength+extensionsLength+nameLength)
+func makeHello(id uint32, node *Node) ([]byte, error) {
+	nameLength := len(node.name)
+	packetLength := extensionsLength + nameLength
+	h := make([]byte, headerLength+packetLength) // +signatureLength
 	binary.BigEndian.PutUint32(h[0:4], id)
-	binary.BigEndian.PutUint16(h[5:7], uint16(extensionsLength)+uint16(nameLength))
-	copy(h[headerLength+4:], name)
-	return h
+	binary.BigEndian.PutUint16(h[5:headerLength], uint16(packetLength))
+	copy(h[headerLength+extensionsLength:], []byte(node.name))
+	/*sign, err := signECDSA(node.privateKey, h[:headerLength+packetLength])
+	if err != nil {
+		return nil, err
+	}
+	copy(h[headerLength+packetLength:], sign)*/
+	return h, nil
 }
 
-func makeHelloReply(id uint32, name string) []byte {
-	nameLength := len(name)
-	h := make([]byte, headerLength+extensionsLength+nameLength)
+func makeHelloReply(id uint32, node *Node) ([]byte, error) {
+	nameLength := len(node.name)
+	packetLength := extensionsLength + nameLength
+	h := make([]byte, headerLength+packetLength)
 	binary.BigEndian.PutUint32(h[0:4], id)
 	h[4] = helloReplyType
-	binary.BigEndian.PutUint16(h[5:7], uint16(extensionsLength)+uint16(nameLength))
-	copy(h[headerLength+4:], name)
-	return h
+	binary.BigEndian.PutUint16(h[5:headerLength], uint16(packetLength))
+	copy(h[headerLength+extensionsLength:], []byte(node.name))
+	/*sign, err := signECDSA(node.privateKey, h[:headerLength+packetLength])
+	if err != nil {
+		return nil, err
+	}
+	copy(h[headerLength+packetLength:], sign)*/
+	return h, nil
 }
 
-func makePublicKey(id uint32, publicKey [64]byte) []byte {
-	h := make([]byte, headerLength+publicKeyLength)
+func makePublicKey(id uint32, node *Node) ([]byte, error) {
+	packetLength := 0 //publicKeyLength
+	h := make([]byte, headerLength+packetLength)
 	binary.BigEndian.PutUint32(h[0:4], id)
 	h[4] = publicKeyType
-	binary.BigEndian.PutUint16(h[5:headerLength], uint16(publicKeyLength))
-	copy(h[headerLength:], publicKey[:])
-	return h
+	binary.BigEndian.PutUint16(h[5:headerLength], uint16(packetLength))
+	//copy(h[headerLength:], node.formattedPublicKey[:])
+	/*sign, err := signECDSA(node.privateKey, h[:headerLength+packetLength])
+	if err != nil {
+		return nil, err
+	}
+	copy(h[headerLength+packetLength:], sign)*/
+	return h, nil
 }
 
-func makePublicKeyReply(id uint32, publicKey []byte) []byte {
-	h := make([]byte, headerLength+publicKeyLength)
+func makePublicKeyReply(id uint32, node *Node) ([]byte, error) {
+	packetLength := 0 //publicKeyLength
+	h := make([]byte, headerLength+packetLength)
 	binary.BigEndian.PutUint32(h[0:4], id)
 	h[4] = publicKeyReplyType
-	binary.BigEndian.PutUint16(h[5:headerLength], uint16(publicKeyLength))
-	copy(h[headerLength:], publicKey[:])
-	return h
+	binary.BigEndian.PutUint16(h[5:headerLength], uint16(packetLength))
+	copy(h[headerLength:], node.formattedPublicKey[:])
+	/*sign, err := signECDSA(node.privateKey, h[:headerLength+packetLength])
+	if err != nil {
+		return nil, err
+	}
+	copy(h[headerLength+packetLength:], sign)*/
+	return h, nil
 }
 
-func makeRoot(id uint32, hash []byte) []byte {
-	h := make([]byte, headerLength+hashLength)
+func makeRoot(id uint32, hash [32]byte, node *Node) ([]byte, error) {
+	packetLength := hashLength
+	h := make([]byte, headerLength+packetLength)
 	binary.BigEndian.PutUint32(h[0:4], id)
 	h[4] = rootType
-	copy(h[headerLength:], hash)
-	return h
+	binary.BigEndian.PutUint16(h[5:headerLength], uint16(packetLength))
+	copy(h[headerLength:], hash[:])
+	/*sign, err := signECDSA(node.privateKey, h[:headerLength+packetLength])
+	if err != nil {
+		return nil, err
+	}
+	copy(h[headerLength+packetLength:], sign)*/
+	return h, nil
 }
 
-func makeRootReply(id uint32, hash []byte) []byte {
-	h := make([]byte, headerLength+hashLength)
+func makeRootReply(id uint32, hash []byte, node *Node) ([]byte, error) {
+	packetLength := hashLength
+	h := make([]byte, headerLength+packetLength)
 	binary.BigEndian.PutUint32(h[0:4], id)
 	h[4] = rootReplyType
+	binary.BigEndian.PutUint16(h[5:headerLength], uint16(packetLength))
 	copy(h[headerLength:], hash)
-	return h
+	/*sign, err := signECDSA(node.privateKey, h[:headerLength+packetLength])
+	if err != nil {
+		return nil, err
+	}
+	copy(h[headerLength+packetLength:], sign)*/
+	return h, nil
 }
 
-func makeError(id uint32, err string) []byte {
-	errLength := len(err)
-	h := make([]byte, headerLength+errLength)
+func makeError(id uint32, errorMessage string, node *Node) ([]byte, error) {
+	errLength := len(errorMessage)
+	packetLength := errLength
+	h := make([]byte, headerLength+packetLength)
 	binary.BigEndian.PutUint32(h[0:4], id)
 	h[4] = errorType
-	copy(h[headerLength:], err)
-	return h
+	binary.BigEndian.PutUint16(h[5:headerLength], uint16(packetLength))
+	copy(h[headerLength:], errorMessage)
+	/*sign, err := signECDSA(node.privateKey, h[:headerLength+packetLength])
+	if err != nil {
+		return nil, err
+	}
+	copy(h[headerLength+packetLength:], sign)*/
+	return h, nil
 }

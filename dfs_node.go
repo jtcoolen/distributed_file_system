@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/ecdsa"
+	"crypto/sha256"
 	"encoding/binary"
 	"log"
 	"net"
@@ -12,12 +13,12 @@ type Node struct {
 	name               string
 	privateKey         *ecdsa.PrivateKey
 	publicKey          *ecdsa.PublicKey
-	formattedPublicKey []byte
+	formattedPublicKey [64]byte
 	conn               *net.UDPConn
 	bootstrapAddresses [][]byte
 }
 
-var client_name = "test"
+var client_name = "test2"
 
 func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 	packetType := packet[4]
@@ -27,11 +28,24 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 		log.Printf("Hello from %s", addr)
 	case publicKeyType:
 		log.Printf("Public Key from %s", addr)
-		node.conn.WriteToUDP(makePublicKeyReply(id, node.formattedPublicKey[:]), addr)
+		reply, err := makePublicKeyReply(id, node)
+		if err == nil {
+			node.conn.WriteToUDP(reply, addr)
+			break
+		}
+		log.Printf("%s", err)
 	case publicKeyReplyType:
 		log.Printf("publicKeyReply from %s", addr)
 	case helloReplyType:
 		log.Printf("HelloReply from %s", addr)
+		reply, err := makeRoot(id, sha256.Sum256([]byte("")), node)
+		if err == nil {
+			node.conn.WriteToUDP(reply, addr)
+			break
+		}
+		log.Printf("%s", err)
+	case rootType:
+		log.Printf("Root from %s", addr)
 	case errorType:
 		log.Printf("Error: %s from %s", string(packet[headerLength:]), addr)
 	default:
@@ -47,8 +61,14 @@ func sendPeriodicHello(node *Node) {
 			if err != nil {
 				log.Fatal(err)
 			}
-			node.conn.WriteToUDP(makeHello(1, client_name), dst)
+			hello, err := makeHello(1, node)
 			// the protocol requires an Id different from 0 for unsolicited messages
+			if err == nil {
+				node.conn.WriteToUDP(hello, dst)
+				continue
+			}
+			log.Printf("%s", err)
+
 		}
 		time.Sleep(helloPeriod)
 	}

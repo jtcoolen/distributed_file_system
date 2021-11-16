@@ -16,8 +16,8 @@ func genECDSAKeyPair() (*ecdsa.PublicKey, *ecdsa.PrivateKey, error) {
 	return &privateKey.PublicKey, privateKey, nil
 }
 
-func getFormattedECDSAPublicKey(publicKey *ecdsa.PublicKey) []byte {
-	formatted := make([]byte, 64)
+func getFormattedECDSAPublicKey(publicKey *ecdsa.PublicKey) [64]byte {
+	formatted := [64]byte{}
 	publicKey.X.FillBytes(formatted[:32])
 	publicKey.Y.FillBytes(formatted[32:])
 	return formatted

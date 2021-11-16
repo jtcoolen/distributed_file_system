@@ -30,14 +30,17 @@ func makePublicKey(id uint32, publicKey [64]byte) []byte {
 	h := make([]byte, headerLength+publicKeyLength)
 	binary.BigEndian.PutUint32(h[0:4], id)
 	h[4] = publicKeyType
+	binary.BigEndian.PutUint16(h[5:headerLength], uint16(publicKeyLength))
 	copy(h[headerLength:], publicKey[:])
 	return h
 }
 
-func makePublicKeyReply(id uint32) []byte {
-	h := make([]byte, headerLength)
+func makePublicKeyReply(id uint32, publicKey []byte) []byte {
+	h := make([]byte, headerLength+publicKeyLength)
 	binary.BigEndian.PutUint32(h[0:4], id)
-	h[4] = makePublicKeyReplyType
+	h[4] = publicKeyReplyType
+	binary.BigEndian.PutUint16(h[5:headerLength], uint16(publicKeyLength))
+	copy(h[headerLength:], publicKey[:])
 	return h
 }
 

@@ -16,7 +16,7 @@ var helloType byte = 0
 var helloReplyType byte = 128
 
 var publicKeyType byte = 1
-var makePublicKeyReplyType byte = 129
+var publicKeyReplyType byte = 129
 
 var rootType byte = 2
 var rootReplyType byte = 130

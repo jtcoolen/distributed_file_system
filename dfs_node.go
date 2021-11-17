@@ -18,7 +18,7 @@ type Node struct {
 	bootstrapAddresses [][]byte
 }
 
-var client_name = "test2"
+var client_name = "test"
 
 func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 	packetType := packet[4]
@@ -64,21 +64,37 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 }
 
 func sendPeriodicHello(node *Node) {
+	i := 0
 	for {
 		for _, addr := range node.bootstrapAddresses {
 			dst, err := net.ResolveUDPAddr("udp", string(addr))
 			if err != nil {
 				log.Fatal(err)
 			}
+
+			if i == 1 {
+				log.Print("Ok i == 1")
+				juliuszRoot, _ := getPeerRoot(juliusz)
+				hello, err := makeGetDatum(1, juliuszRoot, node)
+				// the protocol requires an Id different from 0 for unsolicited messages
+				if err == nil {
+					log.Printf("Sent GetDatum(%x)!", juliuszRoot)
+					node.conn.WriteToUDP(hello, dst)
+					continue
+				}
+			}
+
 			hello, err := makeHello(1, node)
 			// the protocol requires an Id different from 0 for unsolicited messages
 			if err == nil {
+				log.Print("Sent hello!")
 				node.conn.WriteToUDP(hello, dst)
 				continue
 			}
 			log.Printf("%s", err)
 
 		}
+		i++
 		time.Sleep(helloPeriod)
 	}
 }
@@ -132,9 +148,6 @@ func main() {
 	// for i := 0; i < runtime.NumCPU(); i++
 	go receiveIncomingMessages(&node)
 
-	juliuszRoot, _ := getPeerRoot(juliusz)
-
-	time.Sleep(helloPeriod)
 	for {
 	}
 }

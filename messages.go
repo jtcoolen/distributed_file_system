@@ -102,7 +102,7 @@ func makeGetDatum(id uint32, hash [32]byte, node *Node) ([]byte, error) {
 	packetLength := hashLength
 	h := make([]byte, headerLength+packetLength+signatureLength)
 	binary.BigEndian.PutUint32(h[0:4], id)
-	h[4] = errorType
+	h[4] = getDatumType
 	binary.BigEndian.PutUint16(h[5:headerLength], uint16(packetLength))
 	copy(h[headerLength:], hash[:])
 	sign, err := signECDSA(node.privateKey, h[:headerLength+packetLength])

@@ -63,17 +63,15 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 		case 0: // chunk
 			log.Print("Got chunk")
 		case 1: // tree
-			log.Print("Got tree")
-		case 2: // directory
 			len := int(packetLength) - 1
-			log.Printf("Got directory, len=%d", len)
+			log.Printf("Got tree, len=%d", len)
 			var h [32]byte
-			for i := 32; i < len/64; i += 64 {
-				copy(h[:], packet[headerLength+hashLength+1+i:headerLength+hashLength+1+i+32])
+			for i := 0; i < len/32; i += 1 {
+				copy(h[:], packet[headerLength+hashLength+1+i*32:headerLength+hashLength+1+i*32+32])
 
 				for _, addr := range node.bootstrapAddresses {
 
-					hello, err := makeGetDatum(1, h, node)
+					hello, err := makeGetDatum(uint32(i+1), h, node)
 					if err != nil {
 						log.Fatal(err)
 					}
@@ -83,7 +81,32 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 					}
 
 					if err == nil {
-						log.Print("Sent hello!")
+						log.Printf("Sent GetDatum(%x)!", h)
+						node.conn.WriteToUDP(hello, dst)
+						continue
+					}
+				}
+			}
+		case 2: // directory
+			len := int(packetLength) - 1
+			log.Printf("Got directory, len=%d", len)
+			var h [32]byte
+			for i := 0; i < len/64; i += 1 {
+				copy(h[:], packet[headerLength+hashLength+1+32+i*64:headerLength+hashLength+1+i*64+32+32])
+				log.Printf("Entry name: %s", packet[headerLength+hashLength+1+i*64:headerLength+hashLength+1+i*64+32])
+				for _, addr := range node.bootstrapAddresses {
+
+					hello, err := makeGetDatum(uint32(i+1), h, node)
+					if err != nil {
+						log.Fatal(err)
+					}
+					dst, err := net.ResolveUDPAddr("udp", string(addr))
+					if err != nil {
+						log.Fatal(err)
+					}
+
+					if err == nil {
+						log.Printf("Sent GetDatum(%x)!", h)
 						node.conn.WriteToUDP(hello, dst)
 						continue
 					}

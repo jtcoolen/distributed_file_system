@@ -7,6 +7,8 @@ import (
 	"log"
 	"net"
 	"time"
+
+	lru "github.com/hashicorp/golang-lru"
 )
 
 type Node struct {
@@ -16,9 +18,11 @@ type Node struct {
 	formattedPublicKey [64]byte
 	conn               *net.UDPConn
 	bootstrapAddresses [][]byte
+	incomingPackets    *lru.ARCCache
 }
 
-var client_name = "test"
+var clientName = "HTTP200JokesAreOK"
+var incomingPacketsLRUCacheSize = 100
 
 func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 	packetType := packet[4]
@@ -27,6 +31,7 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 	switch packetType {
 	case helloType:
 		log.Printf("Hello from %s", addr)
+
 	case helloReplyType:
 		log.Printf("HelloReply(%s) from %s", packet[headerLength:headerLength+int(packetLength)], addr)
 	case publicKeyType:
@@ -52,14 +57,47 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 	case getDatumType:
 		log.Printf("GetDatum from %s", addr)
 	case datumType:
-		log.Printf("Datum(%x) from %s", packet[headerLength:headerLength+int(packetLength)], addr)
+		log.Printf("Datum(%x) from %s with id %d", packet[headerLength:headerLength+int(packetLength)], addr, id)
+		kind := packet[headerLength+hashLength]
+		switch kind {
+		case 0: // chunk
+			log.Print("Got chunk")
+		case 1: // tree
+			log.Print("Got tree")
+		case 2: // directory
+			len := int(packetLength) - 1
+			log.Printf("Got directory, len=%d", len)
+			var h [32]byte
+			for i := 32; i < len/64; i += 64 {
+				copy(h[:], packet[headerLength+hashLength+1+i:headerLength+hashLength+1+i+32])
+
+				for _, addr := range node.bootstrapAddresses {
+
+					hello, err := makeGetDatum(1, h, node)
+					if err != nil {
+						log.Fatal(err)
+					}
+					dst, err := net.ResolveUDPAddr("udp", string(addr))
+					if err != nil {
+						log.Fatal(err)
+					}
+
+					if err == nil {
+						log.Print("Sent hello!")
+						node.conn.WriteToUDP(hello, dst)
+						continue
+					}
+				}
+			}
+
+		}
+		node.incomingPackets.Add(id, kind)
 	case noDatumType:
 		log.Printf("NoDatum from %s", addr)
 	case errorType:
 		log.Printf("Error: %s from %s", string(packet[headerLength:headerLength+int(packetLength)]), addr)
 	default:
 		log.Printf("Packet type=%d from %s", packetType, addr)
-
 	}
 }
 
@@ -76,7 +114,6 @@ func sendPeriodicHello(node *Node) {
 				log.Print("Ok i == 1")
 				juliuszRoot, _ := getPeerRoot(juliusz)
 				hello, err := makeGetDatum(1, juliuszRoot, node)
-				// the protocol requires an Id different from 0 for unsolicited messages
 				if err == nil {
 					log.Printf("Sent GetDatum(%x)!", juliuszRoot)
 					node.conn.WriteToUDP(hello, dst)
@@ -85,7 +122,6 @@ func sendPeriodicHello(node *Node) {
 			}
 
 			hello, err := makeHello(1, node)
-			// the protocol requires an Id different from 0 for unsolicited messages
 			if err == nil {
 				log.Print("Sent hello!")
 				node.conn.WriteToUDP(hello, dst)
@@ -108,6 +144,10 @@ func receiveIncomingMessages(node *Node) {
 			go processIncomingPacket(node, remoteAddr, buffer[:n])
 		}
 	}
+}
+
+func downloadJuliuszTree() {
+
 }
 
 func main() {
@@ -140,7 +180,36 @@ func main() {
 		panic(err)
 	}
 
-	node := Node{client_name, privateKey, publicKey, formattedPublicKey, conn, juliuszAddresses}
+	cache, err := lru.NewARC(incomingPacketsLRUCacheSize)
+	if err != nil {
+		panic(err)
+	}
+
+	node := Node{clientName,
+		privateKey,
+		publicKey,
+		formattedPublicKey,
+		conn,
+		juliuszAddresses,
+		cache,
+	}
+
+	for _, addr := range node.bootstrapAddresses {
+		hello, err := makeHello(1, &node)
+		if err != nil {
+			log.Fatal(err)
+		}
+		dst, err := net.ResolveUDPAddr("udp", string(addr))
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		if err == nil {
+			log.Print("Sent hello!")
+			node.conn.WriteToUDP(hello, dst)
+			continue
+		}
+	}
 
 	//quit := make(chan struct{})
 

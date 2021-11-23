@@ -125,7 +125,7 @@ func getPeerRoot(peer string) ([32]byte, error) {
 	case 204:
 		return h, ErrNoRoot
 	default:
-		copy(h[:], body[32:])
+		copy(h[:], body[:32])
 		return h, nil
 	}
 }

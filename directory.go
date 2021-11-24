@@ -9,7 +9,7 @@ type EntryType int
 
 const (
 	Chunk EntryType = iota
-	File
+	Tree
 	Directory
 )
 
@@ -25,8 +25,8 @@ func displayDirectory(entry *Entry, level int) {
 	switch entry.entryType {
 	case Chunk:
 		fmt.Printf("%sChunk: %x\n", tabs, entry.hash)
-	case File:
-		fmt.Printf("%sFile %s: %x\n", tabs, entry.name, entry.hash)
+	case Tree:
+		fmt.Printf("%sTree %s: %x\n", tabs, entry.name, entry.hash)
 	case Directory:
 		fmt.Printf("%sDirectory %s: %x\n", tabs, entry.name, entry.hash)
 	}

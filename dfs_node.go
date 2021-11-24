@@ -10,13 +10,13 @@ import (
 )
 
 type Node struct {
-	name               string
-	privateKey         *ecdsa.PrivateKey
-	publicKey          *ecdsa.PublicKey
-	formattedPublicKey [64]byte
-	conn               *net.UDPConn
-	bootstrapAddresses []*net.UDPAddr
-	incomingPackets    map[uint32]chan []byte
+	name                 string
+	privateKey           *ecdsa.PrivateKey
+	publicKey            *ecdsa.PublicKey
+	formattedPublicKey   [64]byte
+	conn                 *net.UDPConn
+	bootstrapAddresses   []*net.UDPAddr
+	pendingPacketQueries map[uint32]chan []byte
 }
 
 var clientName = "HTTP200JokesAreOK"
@@ -55,21 +55,21 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 		log.Printf("%s", err)
 
 	case rootReplyType:
-		log.Printf("RootReply from %s", addr)
+		//log.Printf("RootReply from %s", addr)
 
 	case getDatumType:
-		log.Printf("GetDatum from %s", addr)
+		//log.Printf("GetDatum from %s", addr)
 
 	case datumType:
-		log.Printf("Datum(%x) from %s with id %d", packet[headerLength:headerLength+int(packetLength)], addr, id)
-		if node.incomingPackets[id] != nil {
-			node.incomingPackets[id] <- packet[:headerLength+int(packetLength)]
+		//log.Printf("Datum(%x) from %s with id %d", packet[headerLength:headerLength+int(packetLength)], addr, id)
+		if node.pendingPacketQueries[id] != nil {
+			node.pendingPacketQueries[id] <- packet[:headerLength+int(packetLength)]
 		}
 
 	case noDatumType:
-		log.Printf("NoDatum(%x) from %s", packet[headerLength:headerLength+int(packetLength)], addr)
-		if node.incomingPackets[id] != nil {
-			node.incomingPackets[id] <- packet[:headerLength+int(packetLength)]
+		//log.Printf("NoDatum(%x) from %s", packet[headerLength:headerLength+int(packetLength)], addr)
+		if node.pendingPacketQueries[id] != nil {
+			node.pendingPacketQueries[id] <- packet[:headerLength+int(packetLength)]
 		}
 
 	case errorType:
@@ -93,7 +93,7 @@ func sendPeriodicHello(node *Node) {
 			}
 			log.Printf("%s", err)
 		}
-		log.Printf("Incoming Messages Table Length = %d", len(node.incomingPackets))
+		log.Printf("Incoming Messages Table Length = %d", len(node.pendingPacketQueries))
 		i++
 	}
 }
@@ -109,11 +109,29 @@ func receiveIncomingMessages(node *Node) {
 	}
 }
 
-func waitPacket(id uint32, node *Node) []byte {
-	var v chan []byte = node.incomingPackets[id]
+func waitPacket(id uint32, packet []byte, node *Node) []byte {
+	var delay time.Duration = 200000000
+	limit := time.After(delay)
+
+	var v chan []byte = node.pendingPacketQueries[id]
+
 	if v != nil {
-		defer delete(node.incomingPackets, id)
-		return <-v
+		defer delete(node.pendingPacketQueries, id)
+
+		for {
+			select {
+			case out := <-v:
+				return out
+
+			case <-limit:
+				_, err := node.conn.WriteToUDP(packet, node.bootstrapAddresses[0])
+				if err != nil {
+					log.Fatal(err)
+				}
+				delay = delay * delay
+				limit = time.After(delay)
+			}
+		}
 	}
 	return nil
 }
@@ -135,30 +153,24 @@ func downloadJuliuszTree(node *Node) Entry {
 		if err != nil {
 			log.Fatal(err)
 		}
-		node.incomingPackets[id] = make(chan []byte)
+		node.pendingPacketQueries[id] = make(chan []byte)
 
 		_, err = node.conn.WriteToUDP(datum, node.bootstrapAddresses[0])
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		log.Print("Waiting for packet")
-
-		node.incomingPackets[id] = make(chan []byte)
-		packet := waitPacket(id, node) // TODO: check if packet is valid
+		node.pendingPacketQueries[id] = make(chan []byte)
+		packet := waitPacket(id, datum, node) // TODO: check if packet is valid
 		if packet[4] == noDatumType {
 			log.Print("No Datum!")
 			return root
 		}
 
 		currentEntry = findEntry(hashes[0], &root)
-		if currentEntry != nil {
-			log.Printf("OKKK, hash=%x, hash=%x", currentEntry.hash, hashes[0])
-		}
 
 		hashes = hashes[1:] // Remove processed hash
 
-		log.Printf("Packet len = %d, data len = %d", len(packet), len(packet)-headerLength-hashLength)
 		packetLength := binary.BigEndian.Uint16(packet[5:headerLength])
 		// TODO: check if announced packet size is correct, or detect if a datagram contains multiple messages
 
@@ -168,13 +180,11 @@ func downloadJuliuszTree(node *Node) Entry {
 		switch kind {
 		case 0: // Chunk
 			currentEntry.entryType = Chunk
-			log.Print("Got chunk")
 			copy(h[:], packet[headerLength:headerLength+hashLength])
 
 		case 1: // Tree
 			currentEntry.entryType = Tree
 			len := int(packetLength) - 1 - hashLength
-			log.Printf("Got tree, len=%d", len)
 			for i := 0; i < len/32; i += 1 {
 				copy(h[:], packet[headerLength+hashLength+1+i*32:headerLength+hashLength+1+i*32+32])
 				hashes = append(hashes, h)
@@ -184,11 +194,9 @@ func downloadJuliuszTree(node *Node) Entry {
 		case 2: // Directory
 			currentEntry.entryType = Directory
 			len := int(packetLength) - 1 - hashLength
-			log.Printf("Got directory, len=%d", len)
 			for i := 0; i < len/64; i += 1 {
 				copy(h[:], packet[headerLength+hashLength+1+32+i*64:headerLength+hashLength+1+i*64+32+32])
 				name := packet[headerLength+hashLength+1+i*64 : headerLength+hashLength+1+i*64+32]
-				log.Printf("Entry name: %s", name)
 				hashes = append(hashes, h)
 				currentEntry.children = append(currentEntry.children, &Entry{Directory, string(name), h, nil})
 			}
@@ -259,7 +267,7 @@ func main() {
 	go sendPeriodicHello(&node)
 	go receiveIncomingMessages(&node)
 
-	var delay time.Duration = 4 * time.Second
+	var delay time.Duration = 8 * time.Second
 	time.Sleep(delay)
 
 	for {

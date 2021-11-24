@@ -7,8 +7,6 @@ import (
 	"log"
 	"net"
 	"time"
-
-	lru "github.com/hashicorp/golang-lru"
 )
 
 type Node struct {
@@ -17,12 +15,11 @@ type Node struct {
 	publicKey          *ecdsa.PublicKey
 	formattedPublicKey [64]byte
 	conn               *net.UDPConn
-	bootstrapAddresses [][]byte
-	incomingPackets    *lru.ARCCache
+	bootstrapAddresses []*net.UDPAddr
+	incomingPackets    map[uint32]chan []byte
 }
 
 var clientName = "HTTP200JokesAreOK"
-var incomingPacketsLRUCacheSize = 100
 
 func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 	packetType := packet[4]
@@ -58,65 +55,14 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 		log.Printf("GetDatum from %s", addr)
 	case datumType:
 		log.Printf("Datum(%x) from %s with id %d", packet[headerLength:headerLength+int(packetLength)], addr, id)
-		kind := packet[headerLength+hashLength]
-		switch kind {
-		case 0: // chunk
-			log.Print("Got chunk")
-		case 1: // tree
-			len := int(packetLength) - 1
-			log.Printf("Got tree, len=%d", len)
-			var h [32]byte
-			for i := 0; i < len/32; i += 1 {
-				copy(h[:], packet[headerLength+hashLength+1+i*32:headerLength+hashLength+1+i*32+32])
-
-				for _, addr := range node.bootstrapAddresses {
-
-					hello, err := makeGetDatum(uint32(i+1), h, node)
-					if err != nil {
-						log.Fatal(err)
-					}
-					dst, err := net.ResolveUDPAddr("udp", string(addr))
-					if err != nil {
-						log.Fatal(err)
-					}
-
-					if err == nil {
-						log.Printf("Sent GetDatum(%x)!", h)
-						node.conn.WriteToUDP(hello, dst)
-						continue
-					}
-				}
-			}
-		case 2: // directory
-			len := int(packetLength) - 1
-			log.Printf("Got directory, len=%d", len)
-			var h [32]byte
-			for i := 0; i < len/64; i += 1 {
-				copy(h[:], packet[headerLength+hashLength+1+32+i*64:headerLength+hashLength+1+i*64+32+32])
-				log.Printf("Entry name: %s", packet[headerLength+hashLength+1+i*64:headerLength+hashLength+1+i*64+32])
-				for _, addr := range node.bootstrapAddresses {
-
-					hello, err := makeGetDatum(uint32(i+1), h, node)
-					if err != nil {
-						log.Fatal(err)
-					}
-					dst, err := net.ResolveUDPAddr("udp", string(addr))
-					if err != nil {
-						log.Fatal(err)
-					}
-
-					if err == nil {
-						log.Printf("Sent GetDatum(%x)!", h)
-						node.conn.WriteToUDP(hello, dst)
-						continue
-					}
-				}
-			}
-
+		if node.incomingPackets[id] != nil {
+			node.incomingPackets[id] <- packet[:]
 		}
-		node.incomingPackets.Add(id, kind)
 	case noDatumType:
 		log.Printf("NoDatum from %s", addr)
+		if node.incomingPackets[id] != nil {
+			node.incomingPackets[id] <- packet[:]
+		}
 	case errorType:
 		log.Printf("Error: %s from %s", string(packet[headerLength:headerLength+int(packetLength)]), addr)
 	default:
@@ -127,40 +73,23 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 func sendPeriodicHello(node *Node) {
 	i := 0
 	for {
+		time.Sleep(helloPeriod)
 		for _, addr := range node.bootstrapAddresses {
-			dst, err := net.ResolveUDPAddr("udp", string(addr))
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			if i == 1 {
-				log.Print("Ok i == 1")
-				juliuszRoot, _ := getPeerRoot(juliusz)
-				hello, err := makeGetDatum(1, juliuszRoot, node)
-				if err == nil {
-					log.Printf("Sent GetDatum(%x)!", juliuszRoot)
-					node.conn.WriteToUDP(hello, dst)
-					continue
-				}
-			}
-
 			hello, err := makeHello(1, node)
 			if err == nil {
 				log.Print("Sent hello!")
-				node.conn.WriteToUDP(hello, dst)
+				node.conn.WriteToUDP(hello, addr)
 				continue
 			}
 			log.Printf("%s", err)
-
 		}
 		i++
-		time.Sleep(helloPeriod)
 	}
 }
 
 func receiveIncomingMessages(node *Node) {
 	for {
-		buffer := make([]byte, 1024)
+		buffer := make([]byte, 8192) // TODO: be careful when parsing
 		n, remoteAddr, err := 0, new(net.UDPAddr), error(nil)
 		for err == nil {
 			n, remoteAddr, err = node.conn.ReadFromUDP(buffer)
@@ -169,8 +98,80 @@ func receiveIncomingMessages(node *Node) {
 	}
 }
 
-func downloadJuliuszTree() {
+func waitPacket(id uint32, node *Node) []byte {
+	var v chan []byte = node.incomingPackets[id]
+	if v != nil {
+		defer delete(node.incomingPackets, id)
+		return <-v
+	}
+	return nil
+}
 
+func downloadJuliuszTree(node *Node) Entry {
+	juliuszRoot, _ := getPeerRoot(juliusz)
+	root := Entry{Directory, "", juliuszRoot, nil}
+	var currentEntry *Entry
+	var id uint32 = 2 // TODO: global id variable?
+	hashes := make([][32]byte, 0)
+	hashes = append(hashes, juliuszRoot)
+	for len(hashes) != 0 {
+		id++
+		datum, err := makeGetDatum(id, hashes[0], node)
+		if err != nil {
+			log.Fatal(err)
+		}
+		node.incomingPackets[id] = make(chan []byte)
+
+		_, err = node.conn.WriteToUDP(datum, node.bootstrapAddresses[0])
+		if err != nil {
+			log.Fatal(err)
+		}
+		log.Printf("Sent GetDatum(%x)!", juliuszRoot)
+
+		log.Print("Waiting for packet")
+		node.incomingPackets[id] = make(chan []byte)
+		packet := waitPacket(id, node) // TODO: check if packet is valid
+		if packet[4] == noDatumType {
+			log.Print("No Datum!")
+			return root
+		}
+		currentEntry = findEntry(hashes[0], &root)
+		if currentEntry != nil {
+			log.Printf("OKKK, hash=%x, hash=%x", currentEntry.hash, hashes[0])
+		}
+		hashes = hashes[1:] // Remove processed hash
+		log.Printf("Packet len = %d, data len = %d", len(packet), len(packet)-headerLength-hashLength)
+		packetLength := binary.BigEndian.Uint16(packet[5:headerLength])
+		kind := packet[headerLength+hashLength]
+		var h [32]byte
+		switch kind {
+		case 0: // chunk
+			currentEntry.entryType = Chunk
+			log.Print("Got chunk")
+			copy(h[:], packet[headerLength:headerLength+hashLength])
+		case 1: // tree
+			currentEntry.entryType = File
+			len := int(packetLength) - 1
+			log.Printf("Got tree, len=%d", len)
+			for i := 0; i < len/32; i += 1 {
+				copy(h[:], packet[headerLength+hashLength+1+i*32:headerLength+hashLength+1+i*32+32])
+				hashes = append(hashes, h)
+				currentEntry.children = append(currentEntry.children, &Entry{Chunk, "", h, nil})
+			}
+		case 2: // directory
+			currentEntry.entryType = Directory
+			len := int(packetLength) - 1
+			log.Printf("Got directory, len=%d", len)
+			for i := 0; i < len/64; i += 1 {
+				copy(h[:], packet[headerLength+hashLength+1+32+i*64:headerLength+hashLength+1+i*64+32+32])
+				name := packet[headerLength+hashLength+1+i*64 : headerLength+hashLength+1+i*64+32]
+				log.Printf("Entry name: %s", name)
+				hashes = append(hashes, h)
+				currentEntry.children = append(currentEntry.children, &Entry{Directory, string(name), h, nil})
+			}
+		}
+	}
+	return root
 }
 
 func main() {
@@ -189,8 +190,15 @@ func main() {
 		return
 	}
 
-	for _, addr := range juliuszAddresses {
+	bootstrapAddresses := make([]*net.UDPAddr, len(juliuszAddresses))
+
+	for i, addr := range juliuszAddresses {
 		log.Printf("Juliusz' DFS node address: %s\n", string(addr))
+		dst, err := net.ResolveUDPAddr("udp", string(addr))
+		if err != nil {
+			log.Fatal(err)
+		}
+		bootstrapAddresses[i] = dst
 	}
 
 	addr := net.UDPAddr{
@@ -203,18 +211,13 @@ func main() {
 		panic(err)
 	}
 
-	cache, err := lru.NewARC(incomingPacketsLRUCacheSize)
-	if err != nil {
-		panic(err)
-	}
-
 	node := Node{clientName,
 		privateKey,
 		publicKey,
 		formattedPublicKey,
 		conn,
-		juliuszAddresses,
-		cache,
+		bootstrapAddresses,
+		make(map[uint32]chan []byte),
 	}
 
 	for _, addr := range node.bootstrapAddresses {
@@ -222,24 +225,24 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		dst, err := net.ResolveUDPAddr("udp", string(addr))
-		if err != nil {
-			log.Fatal(err)
-		}
 
 		if err == nil {
 			log.Print("Sent hello!")
-			node.conn.WriteToUDP(hello, dst)
+			node.conn.WriteToUDP(hello, addr)
 			continue
 		}
 	}
 
-	//quit := make(chan struct{})
-
 	go sendPeriodicHello(&node)
-	// for i := 0; i < runtime.NumCPU(); i++
 	go receiveIncomingMessages(&node)
 
+	var delay time.Duration = 4 * time.Second
+	time.Sleep(delay)
+
 	for {
+		d := downloadJuliuszTree(&node)
+		log.Print("Got tree")
+		displayDirectory(&d, 0)
+		time.Sleep(10000 * time.Second)
 	}
 }

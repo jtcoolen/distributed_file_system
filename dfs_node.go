@@ -173,7 +173,7 @@ func downloadJuliuszTree(node *Node) Entry {
 
 		case 1: // Tree
 			currentEntry.entryType = Tree
-			len := int(packetLength) - 1
+			len := int(packetLength) - 1 - hashLength
 			log.Printf("Got tree, len=%d", len)
 			for i := 0; i < len/32; i += 1 {
 				copy(h[:], packet[headerLength+hashLength+1+i*32:headerLength+hashLength+1+i*32+32])
@@ -183,7 +183,7 @@ func downloadJuliuszTree(node *Node) Entry {
 
 		case 2: // Directory
 			currentEntry.entryType = Directory
-			len := int(packetLength) - 1
+			len := int(packetLength) - 1 - hashLength
 			log.Printf("Got directory, len=%d", len)
 			for i := 0; i < len/64; i += 1 {
 				copy(h[:], packet[headerLength+hashLength+1+32+i*64:headerLength+hashLength+1+i*64+32+32])

@@ -266,6 +266,7 @@ func main() {
 		d := downloadJuliuszTree(&node)
 		log.Print("Got tree")
 		displayDirectory(&d, 0)
+		log.Printf("The ROOT hash is : %x", computeHash(&d))
 		time.Sleep(10000 * time.Second)
 	}
 }

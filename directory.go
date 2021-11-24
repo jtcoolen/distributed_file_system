@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"strings"
 )
@@ -48,4 +49,16 @@ func findEntry(hash [32]byte, dir *Entry) *Entry {
 		}
 	}
 	return nil
+}
+
+func computeHash(entry *Entry) [32]byte {
+	if entry.children == nil {
+		return entry.hash
+	}
+	concatHash := make([]byte, 32)
+	for _, c := range entry.children {
+		h := computeHash(c)
+		concatHash = append(concatHash, h[:]...)
+	}
+	return sha256.Sum256(concatHash)
 }

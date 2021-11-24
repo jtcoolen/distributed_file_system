@@ -280,7 +280,7 @@ func main() {
 		h, _ := hex.DecodeString(hexStr)
 		var h2 [32]byte
 		copy(h2[:], h[:32])
-		e := findEntry(h2, &d)
+		//e := findEntry(h2, &d)
 		log.Printf("The ROOT hash is : %x", computeHash(&d))
 		time.Sleep(10000 * time.Second)
 	}

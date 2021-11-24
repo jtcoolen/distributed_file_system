@@ -55,10 +55,10 @@ func computeHash(entry *Entry) [32]byte {
 	if entry.children == nil {
 		return entry.hash
 	}
-	concatHash := make([]byte, 32)
-	for _, c := range entry.children {
+	concatHash := make([]byte, 32*len(entry.children))
+	for i, c := range entry.children {
 		h := computeHash(c)
-		concatHash = append(concatHash, h[:]...)
+		copy(concatHash[i*32:i*32+32], h[:])
 	}
 	return sha256.Sum256(concatHash)
 }

@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/sha256"
 	"encoding/binary"
+	"encoding/hex"
 	"log"
 	"net"
 	"time"
@@ -109,7 +110,7 @@ func receiveIncomingMessages(node *Node) {
 	}
 }
 
-func waitPacket(id uint32, packet []byte, node *Node) []byte {
+func waitPacket(id uint32, packet []byte, node *Node) []byte { // TODO: return error after max retries
 	var delay time.Duration = 200000000
 	limit := time.After(delay)
 
@@ -185,6 +186,7 @@ func downloadJuliuszTree(node *Node) Entry {
 		case 1: // Tree
 			currentEntry.entryType = Tree
 			len := int(packetLength) - 1 - hashLength
+			log.Printf("Tree : %x", packet[headerLength+hashLength:])
 			for i := 0; i < len/32; i += 1 {
 				copy(h[:], packet[headerLength+hashLength+1+i*32:headerLength+hashLength+1+i*32+32])
 				hashes = append(hashes, h)
@@ -274,6 +276,11 @@ func main() {
 		d := downloadJuliuszTree(&node)
 		log.Print("Got tree")
 		displayDirectory(&d, 0)
+		hexStr := "6a323926ba8ce6082b9657b0ab48b41849a4d43a4efce34072b7c78ff7cdcb50"
+		h, _ := hex.DecodeString(hexStr)
+		var h2 [32]byte
+		copy(h2[:], h[:32])
+		e := findEntry(h2, &d)
 		log.Printf("The ROOT hash is : %x", computeHash(&d))
 		time.Sleep(10000 * time.Second)
 	}

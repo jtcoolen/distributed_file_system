@@ -26,7 +26,7 @@ func DisplayDirectory(entry *Entry, level int) {
 	tabs := strings.Repeat(" ", level)
 	switch entry.Type {
 	case Chunk:
-		fmt.Printf("%sChunk len = %d: %x, computed hash: %x\n", tabs, len(entry.Data), entry.Hash, sha256.Sum256(entry.Data))
+		fmt.Printf("%sChunk len = %d\n", tabs, len(entry.Data))
 	case Tree:
 		fmt.Printf("%sTree %s: %x\n", tabs, entry.Name, entry.Hash)
 	case Directory:

@@ -10,16 +10,27 @@ import (
 )
 
 func outputEntryToDisk(entry *common.Entry, path string) {
+	//os.Chdir(path)
 	switch entry.Type {
 	case 0:
-		f, err := os.Create(fmt.Sprintf("%s/%s", path, entry.Name))
+		var n string
+		if entry.Name == "" {
+			n = "nameless"
+		} else {
+			n = entry.Name
+		}
+		log.Printf("Got name=%s", n)
+		f, err := os.Open(fmt.Sprintf("%s/%s", path, n))
+		defer f.Close()
 		if err != nil {
-			log.Fatal(err)
+			e, _ := err.(*os.PathError)
+			log.Fatal(e)
 		}
 		f.Write(entry.Data)
-		f.Close()
+
 	case 1:
-		f, err := os.Create(fmt.Sprintf("%s/%s", path, entry.Name))
+		f, err := os.Open(fmt.Sprintf("%s/%s", path, entry.Name))
+		defer f.Close()
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -33,15 +44,20 @@ func outputEntryToDisk(entry *common.Entry, path string) {
 				f.Write(c.Data)
 			}
 		}
-		f.Close()
 
 	case 2:
-		err := os.Mkdir(fmt.Sprintf("%s/%s", path, entry.Name), 0755)
+		var n string
+		if entry.Name == "" {
+			n = "root"
+		} else {
+			n = entry.Name
+		}
+		err := os.Mkdir(fmt.Sprintf("%s/%s", path, n), 0755)
 		if err != nil {
 			log.Fatal(err)
 		}
 		for _, c := range entry.Children {
-			outputEntryToDisk(c, fmt.Sprintf("%s/%s", path, entry.Name))
+			outputEntryToDisk(c, path) // fmt.Sprintf("%s/%s", path, n)
 		}
 	}
 }
@@ -69,7 +85,9 @@ func main() {
 		log.Fatal("arith error:", err)
 	}
 
-	fmt.Printf("Got: %d", reply.Type)
+	log.Printf("Got: %s", reply.Name)
+
+	common.DisplayDirectory(reply, 0)
 
 	dir, err := os.Getwd()
 	if err != nil {

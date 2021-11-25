@@ -139,11 +139,13 @@ func waitPacket(id uint32, packet []byte, node *Node) []byte { // TODO: return e
 
 func cache(entry *Entry, node *Node) {
 	if entry.Type == Chunk {
-		node.CachedEntries.Add(entry.Hash, *entry)
+		e := *entry
+		node.CachedEntries.Add(entry.Hash, e)
 		return
 	}
 	for _, c := range entry.Children {
-		node.CachedEntries.Add(entry.Hash, *entry)
+		e := *entry
+		node.CachedEntries.Add(entry.Hash, e)
 		cache(c, node)
 	}
 }

@@ -8,6 +8,8 @@ import (
 	"log"
 	"net"
 	"time"
+
+	lru "github.com/hashicorp/golang-lru"
 )
 
 type Node struct {
@@ -18,9 +20,12 @@ type Node struct {
 	conn                 *net.UDPConn
 	bootstrapAddresses   []*net.UDPAddr
 	pendingPacketQueries map[uint32]chan []byte
+	cachedEntries        *lru.ARCCache
 }
 
 var clientName = "HTTP200JokesAreOK"
+
+const MAX_CACHED_ENTRIES = 100
 
 func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 	id := binary.BigEndian.Uint32(packet[0:4])
@@ -137,6 +142,19 @@ func waitPacket(id uint32, packet []byte, node *Node) []byte { // TODO: return e
 	return nil
 }
 
+func cache(entry *Entry, node *Node) {
+	if entry.entryType == Chunk {
+		node.cachedEntries.Add(entry.hash, *entry)
+		return
+	}
+	concatHash := make([]byte, 1+32*len(entry.children))
+	concatHash[0] = 1
+	for _, c := range entry.children {
+		node.cachedEntries.Add(entry.hash, *entry)
+		cache(c, node)
+	}
+}
+
 func downloadJuliuszTree(node *Node) Entry {
 	juliuszRoot, _ := getPeerRoot(juliusz)
 
@@ -149,6 +167,16 @@ func downloadJuliuszTree(node *Node) Entry {
 
 	for len(hashes) != 0 {
 		id++
+
+		cachedEntry, ok := node.cachedEntries.Get(hashes[0])
+		if ok {
+			log.Printf("Using cached Entry(%x)", hashes[0])
+			e := cachedEntry.(Entry)
+			currentEntry = findEntry(hashes[0], &root)
+			hashes = hashes[1:] // Remove processed hash
+			*currentEntry = e
+			continue
+		}
 
 		datum, err := makeGetDatum(id, hashes[0], node)
 		if err != nil {
@@ -208,6 +236,7 @@ func downloadJuliuszTree(node *Node) Entry {
 			}
 		}
 	}
+	cache(&root, node)
 	return root
 }
 
@@ -248,6 +277,11 @@ func main() {
 		panic(err)
 	}
 
+	cachedEntries, err := lru.NewARC(MAX_CACHED_ENTRIES)
+	if err != nil {
+		panic(err)
+	}
+
 	node := Node{clientName,
 		privateKey,
 		publicKey,
@@ -255,6 +289,7 @@ func main() {
 		conn,
 		bootstrapAddresses,
 		make(map[uint32]chan []byte),
+		cachedEntries,
 	}
 
 	for _, addr := range node.bootstrapAddresses {
@@ -284,18 +319,11 @@ func main() {
 	var delay time.Duration = 8 * time.Second
 	time.Sleep(delay)
 
+	d := downloadJuliuszTree(&node)
+	log.Print("Got tree")
+	displayDirectory(&d, 0)
 	for {
-		d := downloadJuliuszTree(&node)
-		log.Print("Got tree")
 		displayDirectory(&d, 0)
-		hexStr := "c775198d7e5712101dfec1a39a1447dbb96398e032fd71c181d7a613f2e3f57e"
-		h, _ := hex.DecodeString(hexStr)
-		var h2 [32]byte
-		copy(h2[:], h[:])
-		e := findEntry(h2, &d)
-		log.Printf("The hash is : %x, true one: %x", computeHash(e), h2)
-		log.Printf("The ROOT hash is : %x", computeHash(&d))
-		//displayDirectory(e, 0)
-		time.Sleep(10000 * time.Second)
+		time.Sleep(1 * time.Second)
 	}
 }

@@ -175,14 +175,13 @@ func RetrieveEntry(hash [32]byte, node *Node) Entry {
 		if err != nil {
 			log.Fatal(err)
 		}
-		node.PendingPacketQueries[id] = make(chan []byte)
 
+		node.PendingPacketQueries[id] = make(chan []byte)
 		_, err = node.Conn.WriteToUDP(datum, node.BootstrapAddresses[0])
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		node.PendingPacketQueries[id] = make(chan []byte)
 		packet := waitPacket(id, datum, node) // TODO: check if packet is valid
 		if packet[4] == NoDatumType {
 			log.Print("No Datum!")

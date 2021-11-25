@@ -1,4 +1,4 @@
-module dfs_node
+module dfs
 
 go 1.16
 

@@ -288,6 +288,9 @@ func main() {
 		cachedEntries,
 	}
 
+	// Start RPC server
+	go rpcServer(&node)
+
 	for _, addr := range node.bootstrapAddresses {
 		hello, err := makeHello(1, &node)
 		if err != nil {

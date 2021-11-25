@@ -1,6 +1,7 @@
 package common
 
 import (
+	"bytes"
 	"crypto/ecdsa"
 	"crypto/sha256"
 	"encoding/binary"
@@ -223,6 +224,9 @@ func RetrieveEntry(hash [32]byte, node *Node) Entry {
 			for i := 0; i < len/64; i += 1 {
 				copy(h[:], packet[headerLength+HashLength+1+32+i*64:headerLength+HashLength+1+i*64+32+32])
 				name := packet[headerLength+HashLength+1+i*64 : headerLength+HashLength+1+i*64+32]
+				var b [1]byte
+				name = bytes.Split(name, b[:])[0]
+				//strings.SplitAfterN(name, "", 1)
 				hashes = append(hashes, h)
 				currentEntry.Children = append(currentEntry.Children, &Entry{Directory, string(name), h, nil, nil})
 			}

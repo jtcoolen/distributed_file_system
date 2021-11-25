@@ -7,10 +7,10 @@ import (
 	"log"
 	"net/rpc"
 	"os"
+	"strings"
 )
 
 func outputEntryToDisk(entry *common.Entry, path string) {
-	//os.Chdir(path)
 	switch entry.Type {
 	case 0:
 		var n string
@@ -19,21 +19,23 @@ func outputEntryToDisk(entry *common.Entry, path string) {
 		} else {
 			n = entry.Name
 		}
-		log.Printf("Got name=%s", n)
-		f, err := os.Open(fmt.Sprintf("%s/%s", path, n))
-		defer f.Close()
+		//n = strings.SplitAfter(n, "")[0]
+		s := fmt.Sprintf("%s/%s", path, n)
+		log.Printf("Got name=%d", len(n))
+		f, err := os.OpenFile(s, os.O_RDWR|os.O_CREATE, 0644)
 		if err != nil {
 			e, _ := err.(*os.PathError)
 			log.Fatal(e)
 		}
+		//defer f.Close()
 		f.Write(entry.Data)
 
 	case 1:
-		f, err := os.Open(fmt.Sprintf("%s/%s", path, entry.Name))
-		defer f.Close()
+		f, err := os.OpenFile(fmt.Sprintf("%s/%s", path, entry.Name), os.O_RDWR|os.O_CREATE, 0644)
 		if err != nil {
 			log.Fatal(err)
 		}
+		defer f.Close()
 		for _, c := range entry.Children {
 			switch c.Type {
 			case 1:
@@ -52,12 +54,14 @@ func outputEntryToDisk(entry *common.Entry, path string) {
 		} else {
 			n = entry.Name
 		}
-		err := os.Mkdir(fmt.Sprintf("%s/%s", path, n), 0755)
+		n = strings.SplitAfter(n, " ")[0]
+		log.Print(fmt.Sprintf("Creating dir %s/%s", path, n))
+		err := os.Mkdir(fmt.Sprintf("%s/%s", path, n), 0770)
 		if err != nil {
 			log.Fatal(err)
 		}
 		for _, c := range entry.Children {
-			outputEntryToDisk(c, path) // fmt.Sprintf("%s/%s", path, n)
+			outputEntryToDisk(c, fmt.Sprintf("%s/%s", path, n))
 		}
 	}
 }
@@ -85,13 +89,20 @@ func main() {
 		log.Fatal("arith error:", err)
 	}
 
-	log.Printf("Got: %s", reply.Name)
+	log.Printf("Got: %d", reply.Type)
 
-	common.DisplayDirectory(reply, 0)
+	//common.DisplayDirectory(reply, 0)
 
 	dir, err := os.Getwd()
 	if err != nil {
 		fmt.Println(err)
 	}
+
+	/*_, err = os.OpenFile("/home/jco/dfs/root/hello", os.O_RDWR|os.O_CREATE, 0644)
+	if err != nil {
+		e, _ := err.(*os.PathError)
+		log.Fatal(e)
+	}*/
+
 	outputEntryToDisk(reply, dir)
 }

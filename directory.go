@@ -53,13 +53,28 @@ func findEntry(hash [32]byte, dir *Entry) *Entry {
 }
 
 func computeHash(entry *Entry) [32]byte {
-	if entry.children == nil || len(entry.children) == 0 {
+	if entry.entryType == Chunk {
 		return sha256.Sum256(entry.data)
 	}
-	concatHash := make([]byte, 32*len(entry.children))
-	for i, c := range entry.children {
-		h := computeHash(c)
-		copy(concatHash[i*32:i*32+32], h[:])
+	switch entry.entryType {
+	case Tree:
+		concatHash := make([]byte, 1+32*len(entry.children))
+		concatHash[0] = 1
+		for i, c := range entry.children {
+			h := computeHash(c)
+			copy(concatHash[1+i*32:1+i*32+32], h[:])
+		}
+		return sha256.Sum256(concatHash)
+	case Directory:
+		concatHash := make([]byte, 1+64*len(entry.children))
+		concatHash[0] = 2
+		for i, c := range entry.children {
+			h := computeHash(c)
+			copy(concatHash[1+i*64:1+i*64+32], []byte(c.name))
+			copy(concatHash[1+i*64+32:1+i*64+64], h[:])
+		}
+		return sha256.Sum256(concatHash)
 	}
-	return sha256.Sum256(concatHash)
+	var h [32]byte
+	return h
 }

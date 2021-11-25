@@ -1,4 +1,4 @@
-package main
+package common
 
 import (
 	"crypto/sha256"
@@ -22,7 +22,7 @@ type Entry struct {
 	data      []byte
 }
 
-func displayDirectory(entry *Entry, level int) {
+func DisplayDirectory(entry *Entry, level int) {
 	tabs := strings.Repeat(" ", level)
 	switch entry.entryType {
 	case Chunk:
@@ -34,7 +34,7 @@ func displayDirectory(entry *Entry, level int) {
 	}
 	if entry.children != nil {
 		for _, e := range entry.children {
-			displayDirectory(e, level+1)
+			DisplayDirectory(e, level+1)
 		}
 	}
 }

@@ -1,6 +1,6 @@
-package main
+package common
 
 func (t *Node) RetrieveEntry(hash [32]byte, reply *Entry) error {
-	*reply = retrieveEntry(hash, t)
+	*reply = RetrieveEntry(hash, t)
 	return nil
 }

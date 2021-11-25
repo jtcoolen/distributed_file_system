@@ -1,4 +1,4 @@
-package main
+package common
 
 import (
 	"crypto/ecdsa"
@@ -8,7 +8,7 @@ import (
 	"math/big"
 )
 
-func genECDSAKeyPair() (*ecdsa.PublicKey, *ecdsa.PrivateKey, error) {
+func GenECDSAKeyPair() (*ecdsa.PublicKey, *ecdsa.PrivateKey, error) {
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		return nil, nil, err
@@ -16,14 +16,14 @@ func genECDSAKeyPair() (*ecdsa.PublicKey, *ecdsa.PrivateKey, error) {
 	return &privateKey.PublicKey, privateKey, nil
 }
 
-func getFormattedECDSAPublicKey(publicKey *ecdsa.PublicKey) [64]byte {
+func GetFormattedECDSAPublicKey(publicKey *ecdsa.PublicKey) [64]byte {
 	formatted := [64]byte{}
 	publicKey.X.FillBytes(formatted[:32])
 	publicKey.Y.FillBytes(formatted[32:])
 	return formatted
 }
 
-func signECDSA(privateKey *ecdsa.PrivateKey, data []byte) ([]byte, error) {
+func SignECDSA(privateKey *ecdsa.PrivateKey, data []byte) ([]byte, error) {
 	hashed := sha256.Sum256(data)
 	r, s, err := ecdsa.Sign(rand.Reader, privateKey, hashed[:])
 	if err != nil {
@@ -35,7 +35,7 @@ func signECDSA(privateKey *ecdsa.PrivateKey, data []byte) ([]byte, error) {
 	return signature, nil
 }
 
-func verifyECDSASignature(publicKey *ecdsa.PublicKey, signature [64]byte, data []byte) bool {
+func VerifyECDSASignature(publicKey *ecdsa.PublicKey, signature [64]byte, data []byte) bool {
 	var r, s big.Int
 	r.SetBytes(signature[:32])
 	s.SetBytes(signature[32:])

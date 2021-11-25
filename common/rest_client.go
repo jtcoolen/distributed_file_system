@@ -1,4 +1,4 @@
-package main
+package common
 
 import (
 	"bytes"
@@ -17,22 +17,22 @@ var ErrNoRoot = errors.New("no root")
 var ErrWrongKeySize = errors.New("wrong key size")
 var ErrWrongHashSize = errors.New("wrong hash size")
 
-var serverBaseUrl = "https://jch.irif.fr:8082"
-var peersUrl = fmt.Sprintf("%s/peers", serverBaseUrl)
+var ServerBaseUrl = "https://jch.irif.fr:8082"
+var PeersUrl = fmt.Sprintf("%s/peers", ServerBaseUrl)
 
-func peerAddressesUrl(peer string) string {
-	return fmt.Sprintf("%s/peers/%s/addresses", serverBaseUrl, peer)
+func PeerAddressesUrl(peer string) string {
+	return fmt.Sprintf("%s/peers/%s/addresses", ServerBaseUrl, peer)
 }
 
-func peerKeyUrl(peer string) string {
-	return fmt.Sprintf("%s/peers/%s/key", serverBaseUrl, peer)
+func PeerKeyUrl(peer string) string {
+	return fmt.Sprintf("%s/peers/%s/key", ServerBaseUrl, peer)
 }
 
-func peerRootUrl(peer string) string {
-	return fmt.Sprintf("%s/peers/%s/root", serverBaseUrl, peer)
+func PeerRootUrl(peer string) string {
+	return fmt.Sprintf("%s/peers/%s/root", ServerBaseUrl, peer)
 }
 
-func getHttpRequestResponseBody(method string, url string) ([]byte, *http.Response, error) {
+func GetHttpRequestResponseBody(method string, url string) ([]byte, *http.Response, error) {
 	transport := http.DefaultTransport.(*http.Transport)
 	transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	client := &http.Client{
@@ -59,7 +59,7 @@ func getHttpRequestResponseBody(method string, url string) ([]byte, *http.Respon
 	return body, r, nil
 }
 
-func splitLines(body []byte) [][]byte {
+func SplitLines(body []byte) [][]byte {
 	lines := bytes.Split(body, []byte{byte('\n')})
 	if len(lines) > 0 {
 		last := len(lines) - 1
@@ -70,34 +70,34 @@ func splitLines(body []byte) [][]byte {
 	return lines
 }
 
-func getPeers() ([][]byte, error) {
-	body, r, err := getHttpRequestResponseBody("GET", peersUrl)
+func GetPeers() ([][]byte, error) {
+	body, r, err := GetHttpRequestResponseBody("GET", PeersUrl)
 	if err != nil {
 		return nil, err
 	}
 	if r.StatusCode != 200 {
 		return nil, ErrNotFound
 	}
-	return splitLines(body), nil
+	return SplitLines(body), nil
 }
 
-func getPeerAddresses(peer string) ([][]byte, error) {
-	body, r, err := getHttpRequestResponseBody("GET", peerAddressesUrl(peer))
+func GetPeerAddresses(peer string) ([][]byte, error) {
+	body, r, err := GetHttpRequestResponseBody("GET", PeerAddressesUrl(peer))
 	if err != nil {
 		return nil, err
 	}
 	if r.StatusCode == 404 {
 		return nil, ErrNotFound
 	}
-	return splitLines(body), nil
+	return SplitLines(body), nil
 }
 
-func getPeerKey(peer string) ([]byte, error) {
-	body, r, err := getHttpRequestResponseBody("GET", peerKeyUrl(peer))
+func GetPeerKey(peer string) ([]byte, error) {
+	body, r, err := GetHttpRequestResponseBody("GET", PeerKeyUrl(peer))
 	if err != nil {
 		return nil, err
 	}
-	if len(body) != publicKeyLength {
+	if len(body) != PublicKeyLength {
 		return nil, ErrWrongKeySize
 	}
 	switch r.StatusCode {
@@ -110,9 +110,9 @@ func getPeerKey(peer string) ([]byte, error) {
 	}
 }
 
-func getPeerRoot(peer string) ([32]byte, error) {
+func GetPeerRoot(peer string) ([32]byte, error) {
 	h := [32]byte{}
-	body, r, err := getHttpRequestResponseBody("GET", peerRootUrl(peer))
+	body, r, err := GetHttpRequestResponseBody("GET", PeerRootUrl(peer))
 	if err != nil {
 		return h, err
 	}

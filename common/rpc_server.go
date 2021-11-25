@@ -1,4 +1,4 @@
-package main
+package common
 
 import (
 	"io"
@@ -6,7 +6,7 @@ import (
 	"net/rpc"
 )
 
-func rpcServer(context *Node) {
+func RpcServer(context *Node) {
 	rpc.Register(context)
 	rpc.HandleHTTP()
 

@@ -153,15 +153,13 @@ func cache(entry *Entry, node *Node) {
 	}
 }
 
-func downloadJuliuszTree(node *Node) Entry {
-	juliuszRoot, _ := getPeerRoot(juliusz)
-
-	root := Entry{Directory, "", juliuszRoot, nil, nil}
+func retrieveEntry(hash [32]byte, node *Node) Entry {
+	root := Entry{Directory, "", hash, nil, nil}
 	var currentEntry *Entry
 
 	var id uint32 = 2 // TODO: global id variable?
 	hashes := make([][32]byte, 0)
-	hashes = append(hashes, juliuszRoot)
+	hashes = append(hashes, hash)
 
 	for len(hashes) != 0 {
 		id++
@@ -306,22 +304,32 @@ func main() {
 	go sendPeriodicHello(&node)
 	go receiveIncomingMessages(&node)
 
-	h := "0054a4e07856e972e4353eb282ab29998530a7dc226fd4a54d15ded149a5e4c01932aef84749a9a85f3b54b869d83d34c1ecb3755ffcbeb7f9576fe13ffc8a8ff94ab19abd547efe9d007d550ed1ed8e56836d031ad63490d1d27a2c97ff00e776df0efe8b7e9723ff006d699636a951e18cb4a24b6ad6307d82546c6be9f6d5cd2a54ab5319a6ca7e979f93d53d6ffea8a5fe5fe8b4a9fd3f7feaae2b385dd236a4540fa3bc3981b530547a7e9add274e352b54193bdee3c4f40a1f12ff007d6ff3ff00fdad1beffcaaaffcf5092223a46dae2d2a55a6f6bc10eda5bdc058da3d8d1a34dcebc752fc44f98439c258defecacdaffe169ffee3bf92a37bff008cd4bff61bff00f2591b6ef2dd6756ad27c80c76d2d748e31c2e1685bd76ef7d61fdebb01c795d1f877ffa7e9ff99fff00f1589a8fd547ff0070235c454ad8b5e3cca41bb8448f8563c2d49f56eeeef1c26930f96c9ea472548fe9fe73fc8a9bc2dff90bbff7aa7f350a70cfed0bdaf59c0f96c3b18018e395a563a7eea80b6e2ab27a074859fa3ffe0c7f98adcd3b9fb2b12b5b4cb5ab4ee3ca35cd5a6d6024380e4f0b65b4c0e802a1a77fe2ae3ff8ff0025a216a22bdd06b6daa12200692bc27f68b7fe75fd1b66ba4325c57baea3ff0080adfe42be75f1a7ff005154ff00205460a4924b485f291e523c2481e70992490249249024924ba141ea3fb14bcdb77a95993f5b59500fce57b044af11fd8cff00f53dcfff00ebff0055edc1654db4442620f44ee49026820f2a3b9a2daf6f5293c4b5ed20852a478528f19d46d9da6eab5ad9ed801d8f8587a8520cb8ddd0aeb3c6ff00fd46ff00f2ae6353fa5ab1fadc51c121a324af59f07e966cf48a7382e125793daffe3697f982f70d33ff002ba5fe40b512acb9a2400f8f7285d4f3bdae3f12a377d0dff329c707e4ad3288b1c24131d402553d42a7916cf82e30d8267956eafd4eff009eab2f5aff00c354ff0028fe4b2385d42b9ab72e3b8954c9f9525c7f7ae51f50b0dc0e1ca3a950e47447d4a86a7f545013ee81e73288f0a372044f5951b89039467851b9001cf54c4a7ebf643fc2ac0c4fb26948a6e9f75a05bc8490a4b0cbffd9"
-	h2, _ := hex.DecodeString(h)
-	log.Printf("Hash : %x", sha256.Sum256(h2))
-
-	hh := "010f66bd528a6636215df02b1ca5b6a20d316ad1ae426755f1f5e6764fea19a862d6a8e671404ab77b1aa92123e3bbb14206742791369e78c7073d0e66009bb2a0b501558116621cddf17df185acbb583c6d30a9bb0e5ad42e3d8b5a5bddd20a9ff06847b92caeb7a9b23e3ff6828f8f87b32b2232539532baacab80d595d6f8ae0eb3042b0afa4808d96ad5a0f3a829757baa0d26c774ebbacc7ef2fd4d9aa66e93ccc06a681729b70c74092669fe21475d8eb609b0e883f8fbc53f8f6e1c7247ab4cae7dc168adb38fa3d2567abff79ea26716e71c9b6394ae790ddcb7224d0d7e08a69d77999f0b8e1d2ffe01f2b839d19deeb331cc2ef521d6ce5482d06c6a5476480b310f5d7857be4e1101351a3b95e27b332a55fab779fccd4bc076a61869a075505c2b4c240cb170d6f6c924ddbc7969e3d603e76dffc47a61750234dcb15db2dffb37ff719c4cd2a9a9f09da9a88907fb1d9395b5afac67c8cb3ff402a1924a1fa6d76d9e252e6efbf6a28c971297a4830c5a5bbf4d35f6a8f12087be"
-	hh2, _ := hex.DecodeString(hh)
-	log.Printf("Hash 2 : %x", sha256.Sum256(hh2))
-
 	var delay time.Duration = 8 * time.Second
 	time.Sleep(delay)
 
-	d := downloadJuliuszTree(&node)
-	log.Print("Got tree")
+	juliuszRoot, _ := getPeerRoot(juliusz)
+	d := retrieveEntry(juliuszRoot, &node)
 	displayDirectory(&d, 0)
+
+	hs := make([]string, 6)
+	hs[0] = "409a750241dc70419744cb1e80e1bb6ba8b85f29d40c0c19f672e38526fee91f"
+	hs[1] = "230729114233645b01024f325c0916b0673a17cd6ee76bf660f6b3363ad2214e"
+	hs[2] = "a5249656c59c8a8480ca086cc0cb51f9c7de20a4938d78f5eaeeb9f41f13f161"
+	hs[3] = "4f7dc682324d901ed0b947dd12ee1267d5fed846adc526772b2fd3f96f6eeffb"
+	hs[4] = "9f02206417ee2ac837136c02759c48f8024d26c0ab2c69c3553229d65e0678b0"
+	hs[5] = "8dbd2c084064473a16640235662d60083c64806a635ed67a79aa4d0b8a313dae"
+	h := make([][32]byte, 6)
+	var de [32]byte
+	for i, e := range hs {
+		des, _ := hex.DecodeString(e)
+		copy(de[:], des)
+		h[i] = de
+	}
+
 	for {
-		displayDirectory(&d, 0)
 		time.Sleep(1 * time.Second)
+		for _, e := range h {
+			retrieveEntry(e, &node)
+		}
 	}
 }

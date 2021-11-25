@@ -147,8 +147,6 @@ func cache(entry *Entry, node *Node) {
 		node.cachedEntries.Add(entry.hash, *entry)
 		return
 	}
-	concatHash := make([]byte, 1+32*len(entry.children))
-	concatHash[0] = 1
 	for _, c := range entry.children {
 		node.cachedEntries.Add(entry.hash, *entry)
 		cache(c, node)

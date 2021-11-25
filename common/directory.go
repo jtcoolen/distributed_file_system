@@ -15,35 +15,35 @@ const (
 )
 
 type Entry struct {
-	entryType EntryType
-	name      string
-	hash      [32]byte
-	children  []*Entry
-	data      []byte
+	EntryType EntryType
+	Name      string
+	Hash      [32]byte
+	Children  []*Entry
+	Data      []byte
 }
 
 func DisplayDirectory(entry *Entry, level int) {
 	tabs := strings.Repeat(" ", level)
-	switch entry.entryType {
+	switch entry.EntryType {
 	case Chunk:
-		fmt.Printf("%sChunk len = %d: %x, computed hash: %x\n", tabs, len(entry.data), entry.hash, sha256.Sum256(entry.data))
+		fmt.Printf("%sChunk len = %d: %x, computed hash: %x\n", tabs, len(entry.Data), entry.Hash, sha256.Sum256(entry.Data))
 	case Tree:
-		fmt.Printf("%sTree %s: %x\n", tabs, entry.name, entry.hash)
+		fmt.Printf("%sTree %s: %x\n", tabs, entry.Name, entry.Hash)
 	case Directory:
-		fmt.Printf("%sDirectory %s: %x\n", tabs, entry.name, entry.hash)
+		fmt.Printf("%sDirectory %s: %x\n", tabs, entry.Name, entry.Hash)
 	}
-	if entry.children != nil {
-		for _, e := range entry.children {
+	if entry.Children != nil {
+		for _, e := range entry.Children {
 			DisplayDirectory(e, level+1)
 		}
 	}
 }
 
 func findEntry(hash [32]byte, dir *Entry) *Entry {
-	if dir.hash == hash {
+	if dir.Hash == hash {
 		return dir
 	}
-	for _, c := range dir.children {
+	for _, c := range dir.Children {
 		e := findEntry(hash, c)
 		if e != nil {
 			return e
@@ -53,24 +53,24 @@ func findEntry(hash [32]byte, dir *Entry) *Entry {
 }
 
 func computeHash(entry *Entry) [32]byte {
-	if entry.entryType == Chunk {
-		return sha256.Sum256(entry.data)
+	if entry.EntryType == Chunk {
+		return sha256.Sum256(entry.Data)
 	}
-	switch entry.entryType {
+	switch entry.EntryType {
 	case Tree:
-		concatHash := make([]byte, 1+32*len(entry.children))
+		concatHash := make([]byte, 1+32*len(entry.Children))
 		concatHash[0] = 1
-		for i, c := range entry.children {
+		for i, c := range entry.Children {
 			h := computeHash(c)
 			copy(concatHash[1+i*32:1+i*32+32], h[:])
 		}
 		return sha256.Sum256(concatHash)
 	case Directory:
-		concatHash := make([]byte, 1+64*len(entry.children))
+		concatHash := make([]byte, 1+64*len(entry.Children))
 		concatHash[0] = 2
-		for i, c := range entry.children {
+		for i, c := range entry.Children {
 			h := computeHash(c)
-			copy(concatHash[1+i*64:1+i*64+32], []byte(c.name))
+			copy(concatHash[1+i*64:1+i*64+32], []byte(c.Name))
 			copy(concatHash[1+i*64+32:1+i*64+64], h[:])
 		}
 		return sha256.Sum256(concatHash)

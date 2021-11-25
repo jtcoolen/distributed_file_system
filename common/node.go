@@ -138,12 +138,12 @@ func waitPacket(id uint32, packet []byte, node *Node) []byte { // TODO: return e
 }
 
 func cache(entry *Entry, node *Node) {
-	if entry.entryType == Chunk {
-		node.CachedEntries.Add(entry.hash, *entry)
+	if entry.EntryType == Chunk {
+		node.CachedEntries.Add(entry.Hash, *entry)
 		return
 	}
-	for _, c := range entry.children {
-		node.CachedEntries.Add(entry.hash, *entry)
+	for _, c := range entry.Children {
+		node.CachedEntries.Add(entry.Hash, *entry)
 		cache(c, node)
 	}
 }
@@ -199,31 +199,31 @@ func RetrieveEntry(hash [32]byte, node *Node) Entry {
 
 		switch kind {
 		case 0: // Chunk
-			currentEntry.entryType = Chunk
+			currentEntry.EntryType = Chunk
 			len := int(packetLength) - HashLength
 			// TODO: chack hashes
 			//copy(h[:], packet[headerLength:headerLength+hashLength])
 			//currentEntry.hash = h
-			currentEntry.data = make([]byte, len)
-			copy(currentEntry.data, packet[headerLength+HashLength:headerLength+int(packetLength)])
+			currentEntry.Data = make([]byte, len)
+			copy(currentEntry.Data, packet[headerLength+HashLength:headerLength+int(packetLength)])
 
 		case 1: // Tree
-			currentEntry.entryType = Tree
+			currentEntry.EntryType = Tree
 			len := int(packetLength) - 1 - HashLength
 			for i := 0; i < len/32; i += 1 {
 				copy(h[:], packet[headerLength+HashLength+1+i*32:headerLength+HashLength+1+i*32+32])
 				hashes = append(hashes, h)
-				currentEntry.children = append(currentEntry.children, &Entry{Chunk, "", h, nil, nil})
+				currentEntry.Children = append(currentEntry.Children, &Entry{Chunk, "", h, nil, nil})
 			}
 
 		case 2: // Directory
-			currentEntry.entryType = Directory
+			currentEntry.EntryType = Directory
 			len := int(packetLength) - 1 - HashLength
 			for i := 0; i < len/64; i += 1 {
 				copy(h[:], packet[headerLength+HashLength+1+32+i*64:headerLength+HashLength+1+i*64+32+32])
 				name := packet[headerLength+HashLength+1+i*64 : headerLength+HashLength+1+i*64+32]
 				hashes = append(hashes, h)
-				currentEntry.children = append(currentEntry.children, &Entry{Directory, string(name), h, nil, nil})
+				currentEntry.Children = append(currentEntry.Children, &Entry{Directory, string(name), h, nil, nil})
 			}
 		}
 	}

@@ -140,7 +140,7 @@ func waitPacket(id uint32, packet []byte, node *Node) []byte { // TODO: return e
 func downloadJuliuszTree(node *Node) Entry {
 	juliuszRoot, _ := getPeerRoot(juliusz)
 
-	root := Entry{Directory, "", juliuszRoot, nil}
+	root := Entry{Directory, "", juliuszRoot, nil, nil}
 	var currentEntry *Entry
 
 	var id uint32 = 2 // TODO: global id variable?
@@ -181,26 +181,30 @@ func downloadJuliuszTree(node *Node) Entry {
 		switch kind {
 		case 0: // Chunk
 			currentEntry.entryType = Chunk
+			len := int(packetLength) - 1 - hashLength
 			copy(h[:], packet[headerLength:headerLength+hashLength])
+			currentEntry.data = make([]byte, len)
+			copy(currentEntry.data, packet[headerLength+hashLength+1:headerLength+int(packetLength)])
 
 		case 1: // Tree
 			currentEntry.entryType = Tree
 			len := int(packetLength) - 1 - hashLength
-			log.Printf("Tree : %x", packet[headerLength+hashLength:])
+			//log.Printf("Tree : %x", packet[headerLength+hashLength:])
 			for i := 0; i < len/32; i += 1 {
 				copy(h[:], packet[headerLength+hashLength+1+i*32:headerLength+hashLength+1+i*32+32])
 				hashes = append(hashes, h)
-				currentEntry.children = append(currentEntry.children, &Entry{Chunk, "", h, nil})
+				currentEntry.children = append(currentEntry.children, &Entry{Chunk, "", h, nil, nil})
 			}
 
 		case 2: // Directory
 			currentEntry.entryType = Directory
 			len := int(packetLength) - 1 - hashLength
+			log.Printf("Directory : %x", packet[headerLength+hashLength:])
 			for i := 0; i < len/64; i += 1 {
 				copy(h[:], packet[headerLength+hashLength+1+32+i*64:headerLength+hashLength+1+i*64+32+32])
 				name := packet[headerLength+hashLength+1+i*64 : headerLength+hashLength+1+i*64+32]
 				hashes = append(hashes, h)
-				currentEntry.children = append(currentEntry.children, &Entry{Directory, string(name), h, nil})
+				currentEntry.children = append(currentEntry.children, &Entry{Directory, string(name), h, nil, nil})
 			}
 		}
 	}
@@ -280,8 +284,9 @@ func main() {
 		h, _ := hex.DecodeString(hexStr)
 		var h2 [32]byte
 		copy(h2[:], h[:32])
-		//e := findEntry(h2, &d)
-		log.Printf("The ROOT hash is : %x", computeHash(&d))
+		e := findEntry(h2, &d)
+		log.Printf("The hash is : %x", computeHash(e))
+		displayDirectory(e, 0)
 		time.Sleep(10000 * time.Second)
 	}
 }

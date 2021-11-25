@@ -19,13 +19,14 @@ type Entry struct {
 	name      string
 	hash      [32]byte
 	children  []*Entry
+	data      []byte
 }
 
 func displayDirectory(entry *Entry, level int) {
 	tabs := strings.Repeat(" ", level)
 	switch entry.entryType {
 	case Chunk:
-		fmt.Printf("%sChunk: %x\n", tabs, entry.hash)
+		fmt.Printf("%sChunk len = %d: %x, computed hash: %x\n", tabs, len(entry.data), entry.hash, sha256.Sum256(entry.data))
 	case Tree:
 		fmt.Printf("%sTree %s: %x\n", tabs, entry.name, entry.hash)
 	case Directory:
@@ -52,8 +53,8 @@ func findEntry(hash [32]byte, dir *Entry) *Entry {
 }
 
 func computeHash(entry *Entry) [32]byte {
-	if entry.children == nil {
-		return entry.hash
+	if entry.children == nil || len(entry.children) == 0 {
+		return sha256.Sum256(entry.data)
 	}
 	concatHash := make([]byte, 32*len(entry.children))
 	for i, c := range entry.children {

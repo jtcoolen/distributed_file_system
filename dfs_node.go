@@ -182,7 +182,8 @@ func downloadJuliuszTree(node *Node) Entry {
 		case 0: // Chunk
 			currentEntry.entryType = Chunk
 			len := int(packetLength) - 1 - hashLength
-			copy(h[:], packet[headerLength:headerLength+hashLength])
+			//copy(h[:], packet[headerLength:headerLength+hashLength])
+			copy(currentEntry.hash[:], h[:])
 			currentEntry.data = make([]byte, len)
 			copy(currentEntry.data, packet[headerLength+hashLength+1:headerLength+int(packetLength)])
 

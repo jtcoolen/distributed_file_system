@@ -176,7 +176,7 @@ func RetrieveEntry(hash [32]byte, node *Node) Entry {
 			log.Fatal(err)
 		}
 
-		node.PendingPacketQueries[id] = make(chan []byte)
+		node.PendingPacketQueries[id] = make(chan []byte) // TODO: check if there's already a pending query
 		_, err = node.Conn.WriteToUDP(datum, node.BootstrapAddresses[0])
 		if err != nil {
 			log.Fatal(err)

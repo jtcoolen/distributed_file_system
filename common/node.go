@@ -138,7 +138,7 @@ func waitPacket(id uint32, packet []byte, node *Node) []byte { // TODO: return e
 }
 
 func cache(entry *Entry, node *Node) {
-	if entry.EntryType == Chunk {
+	if entry.Type == Chunk {
 		node.CachedEntries.Add(entry.Hash, *entry)
 		return
 	}
@@ -199,7 +199,7 @@ func RetrieveEntry(hash [32]byte, node *Node) Entry {
 
 		switch kind {
 		case 0: // Chunk
-			currentEntry.EntryType = Chunk
+			currentEntry.Type = Chunk
 			len := int(packetLength) - HashLength
 			// TODO: chack hashes
 			//copy(h[:], packet[headerLength:headerLength+hashLength])
@@ -208,7 +208,7 @@ func RetrieveEntry(hash [32]byte, node *Node) Entry {
 			copy(currentEntry.Data, packet[headerLength+HashLength:headerLength+int(packetLength)])
 
 		case 1: // Tree
-			currentEntry.EntryType = Tree
+			currentEntry.Type = Tree
 			len := int(packetLength) - 1 - HashLength
 			for i := 0; i < len/32; i += 1 {
 				copy(h[:], packet[headerLength+HashLength+1+i*32:headerLength+HashLength+1+i*32+32])
@@ -217,7 +217,7 @@ func RetrieveEntry(hash [32]byte, node *Node) Entry {
 			}
 
 		case 2: // Directory
-			currentEntry.EntryType = Directory
+			currentEntry.Type = Directory
 			len := int(packetLength) - 1 - HashLength
 			for i := 0; i < len/64; i += 1 {
 				copy(h[:], packet[headerLength+HashLength+1+32+i*64:headerLength+HashLength+1+i*64+32+32])

@@ -15,16 +15,16 @@ const (
 )
 
 type Entry struct {
-	EntryType EntryType
-	Name      string
-	Hash      [32]byte
-	Children  []*Entry
-	Data      []byte
+	Type     EntryType
+	Name     string
+	Hash     [32]byte
+	Children []*Entry
+	Data     []byte
 }
 
 func DisplayDirectory(entry *Entry, level int) {
 	tabs := strings.Repeat(" ", level)
-	switch entry.EntryType {
+	switch entry.Type {
 	case Chunk:
 		fmt.Printf("%sChunk len = %d: %x, computed hash: %x\n", tabs, len(entry.Data), entry.Hash, sha256.Sum256(entry.Data))
 	case Tree:
@@ -53,10 +53,10 @@ func findEntry(hash [32]byte, dir *Entry) *Entry {
 }
 
 func computeHash(entry *Entry) [32]byte {
-	if entry.EntryType == Chunk {
+	if entry.Type == Chunk {
 		return sha256.Sum256(entry.Data)
 	}
-	switch entry.EntryType {
+	switch entry.Type {
 	case Tree:
 		concatHash := make([]byte, 1+32*len(entry.Children))
 		concatHash[0] = 1

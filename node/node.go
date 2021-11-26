@@ -2,17 +2,15 @@ package main
 
 import (
 	"dfs/common"
-	"encoding/hex"
 	"log"
 	"net"
-	"time"
 
 	lru "github.com/hashicorp/golang-lru"
 )
 
 const clientName = "HTTP200JokesAreOK"
 
-const MAX_CACHED_ENTRIES = 100
+const MAX_CACHED_ENTRIES = 10
 
 func main() {
 
@@ -85,7 +83,7 @@ func main() {
 	go common.SendPeriodicHello(&node)
 	go common.ReceiveIncomingMessages(&node)
 
-	var delay time.Duration = 8 * time.Second
+	/*var delay time.Duration = 8 * time.Second
 	time.Sleep(delay)
 
 	juliuszRoot, _ := common.GetPeerRoot(common.Juliusz)
@@ -105,7 +103,7 @@ func main() {
 		des, _ := hex.DecodeString(e)
 		copy(de[:], des)
 		h[i] = de
-	}
+	}*/
 
 	for {
 		/*time.Sleep(1 * time.Second)

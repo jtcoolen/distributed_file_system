@@ -232,6 +232,7 @@ func RetrieveEntry(hash [32]byte, node *Node) Entry {
 			}
 		}
 	}
+	log.Printf("Downloaded Entry(%x)", currentEntry.Hash)
 	cache(&root, node)
 	return root
 }

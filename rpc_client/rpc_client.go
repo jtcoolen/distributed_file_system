@@ -96,6 +96,7 @@ func main() {
 
 		var hash [32]byte
 		copy(hash[:], hash_bytes)
+		log.Printf("hash %x", hash)
 
 		err = client.Call("Node.RetrieveEntry", hash, &reply)
 		if err != nil {
@@ -112,8 +113,10 @@ func main() {
 	case "downloadFromPath":
 		DownloadFromPathCmd.Parse(os.Args[2:])
 		reply := new(common.Entry)
-		log.Print(strings.Split("documents/README.text", "/"))
+		//log.Print(strings.Split("documents/README.text", "/"))
 
+		log.Print(*path, *peer)
+		log.Print(len(strings.Split(*path, "/")))
 		client, err := rpc.DialHTTP("tcp", "localhost:9000")
 		if err != nil {
 			log.Fatal("dialing:", err)
@@ -123,14 +126,14 @@ func main() {
 			log.Fatal("Node.RetrieveEntryByPath error:", err)
 		}
 
-		/*dir, err := os.Getwd()
+		dir, err := os.Getwd()
 		if err != nil {
 			log.Fatal(err)
-		}*/
+		}
 
 		log.Print(reply.Hash)
-		common.DisplayDirectory(reply, 0)
-		//outputEntryToDisk(reply, dir)
+		//common.DisplayDirectory(reply, 0)
+		outputEntryToDisk(reply, dir)
 
 	case "peers":
 		peers, err := common.GetPeers()

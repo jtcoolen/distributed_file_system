@@ -1,7 +1,6 @@
 package common
 
 import (
-	"log"
 	"strings"
 )
 
@@ -18,14 +17,11 @@ func (t *Node) RetrieveEntry(hash [32]byte, reply *Entry) error {
 func (t *Node) RetrieveEntryByPath(args *RetrieveEntryByPathArgs, reply *Entry) error {
 	rootHash, err := GetPeerRoot(args.Peer)
 	if err != nil {
-		log.Print("NOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO")
 		return err
 	}
 	rootEntry := RetrieveEntry(rootHash, t)
-	//DisplayDirectory(&rootEntry, 0)
 	entry := FindEntryByPath(strings.Split(args.Path, "/"), &rootEntry)
 	if entry != nil {
-		log.Print("OK!!!!!")
 		*reply = *entry
 	}
 	return nil

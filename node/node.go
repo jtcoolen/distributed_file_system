@@ -108,9 +108,10 @@ func main() {
 	}
 
 	for {
-		time.Sleep(1 * time.Second)
+		/*time.Sleep(1 * time.Second)
 		for _, e := range h {
-			common.RetrieveEntry(e, &node)
-		}
+			en := common.RetrieveEntry(e, &node)
+			common.DisplayDirectory(&en, 0)
+		}*/
 	}
 }

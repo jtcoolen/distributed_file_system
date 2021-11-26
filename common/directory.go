@@ -26,7 +26,7 @@ func DisplayDirectory(entry *Entry, level int) {
 	tabs := strings.Repeat(" ", level)
 	switch entry.Type {
 	case Chunk:
-		fmt.Printf("%sChunk len = %d\n", tabs, len(entry.Data))
+		fmt.Printf("%sChunk len = %d : data = %x\n", tabs, len(entry.Data), entry.Data)
 	case Tree:
 		fmt.Printf("%sTree %s: %x\n", tabs, entry.Name, entry.Hash)
 	case Directory:
@@ -53,10 +53,12 @@ func findEntry(hash [32]byte, dir *Entry) *Entry {
 }
 
 func computeHash(entry *Entry) [32]byte {
-	if entry.Type == Chunk {
-		return sha256.Sum256(entry.Data)
-	}
 	switch entry.Type {
+	case Chunk:
+		concatHash := make([]byte, 1+len(entry.Data))
+		concatHash[0] = 0
+		copy(concatHash[1:], entry.Data)
+		return sha256.Sum256(concatHash)
 	case Tree:
 		concatHash := make([]byte, 1+32*len(entry.Children))
 		concatHash[0] = 1

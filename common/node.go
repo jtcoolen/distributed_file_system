@@ -202,12 +202,12 @@ func RetrieveEntry(hash [32]byte, node *Node) Entry {
 		switch kind {
 		case 0: // Chunk
 			currentEntry.Type = Chunk
-			len := int(packetLength) - HashLength
+			len := int(packetLength) - HashLength - 1
 			// TODO: chack hashes
 			//copy(h[:], packet[headerLength:headerLength+hashLength])
 			//currentEntry.hash = h
 			currentEntry.Data = make([]byte, len)
-			copy(currentEntry.Data, packet[headerLength+HashLength:headerLength+int(packetLength)])
+			copy(currentEntry.Data, packet[headerLength+HashLength+1:headerLength+int(packetLength)])
 
 		case 1: // Tree
 			currentEntry.Type = Tree

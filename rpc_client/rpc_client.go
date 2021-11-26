@@ -86,7 +86,7 @@ func main() {
 
 	err = client.Call("Node.RetrieveEntry", hash, &reply)
 	if err != nil {
-		log.Fatal("arith error:", err)
+		log.Fatal("Node.RetrieveEntry error:", err)
 	}
 
 	log.Printf("Got: %d", reply.Type)

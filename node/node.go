@@ -54,14 +54,16 @@ func main() {
 		panic(err)
 	}
 
-	node := common.Node{clientName,
-		privateKey,
-		publicKey,
-		formattedPublicKey,
-		conn,
-		bootstrapAddresses,
-		make(map[uint32]chan []byte),
-		cachedEntries,
+	node := common.Node{
+		Name:                 clientName,
+		PrivateKey:           privateKey,
+		PublicKey:            publicKey,
+		FormattedPublicKey:   formattedPublicKey,
+		Conn:                 conn,
+		BootstrapAddresses:   bootstrapAddresses,
+		PendingPacketQueries: make(map[uint32]chan []byte),
+		CachedEntries:        cachedEntries,
+		ExportedDirectory:    nil,
 	}
 
 	// Start RPC server

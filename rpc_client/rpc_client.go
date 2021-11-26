@@ -68,6 +68,9 @@ func outputEntryToDisk(entry *common.Entry, path string) {
 func main() {
 	DownloadCmd := flag.NewFlagSet("download", flag.ExitOnError)
 	hash_str := DownloadCmd.String("hash", "", "hash")
+	DownloadFromPathCmd := flag.NewFlagSet("downloadFromPath", flag.ExitOnError)
+	path := DownloadFromPathCmd.String("path", "", "path")
+	peer := DownloadFromPathCmd.String("peer", "", "peer")
 
 	//GetPeersCmd := flag.NewFlagSet("peers", flag.ExitOnError)
 
@@ -105,6 +108,30 @@ func main() {
 		}
 
 		outputEntryToDisk(reply, dir)
+
+	case "downloadFromPath":
+		DownloadFromPathCmd.Parse(os.Args[2:])
+		reply := new(common.Entry)
+		log.Print(strings.Split("documents/README.text", "/"))
+
+		client, err := rpc.DialHTTP("tcp", "localhost:9000")
+		if err != nil {
+			log.Fatal("dialing:", err)
+		}
+		err = client.Call("Node.RetrieveEntryByPath", common.RetrieveEntryByPathArgs{Peer: *peer, Path: *path}, &reply)
+		if err != nil {
+			log.Fatal("Node.RetrieveEntryByPath error:", err)
+		}
+
+		/*dir, err := os.Getwd()
+		if err != nil {
+			log.Fatal(err)
+		}*/
+
+		log.Print(reply.Hash)
+		common.DisplayDirectory(reply, 0)
+		//outputEntryToDisk(reply, dir)
+
 	case "peers":
 		peers, err := common.GetPeers()
 		if err != nil {

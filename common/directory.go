@@ -52,6 +52,27 @@ func findEntry(hash [32]byte, dir *Entry) *Entry {
 	return nil
 }
 
+func findEntryByPath(path []string, entry *Entry) *Entry {
+	if len(path) == 0 {
+		return entry
+	}
+	if entry.Children != nil {
+		for _, c := range entry.Children {
+			if c.Name == path[0] {
+				return findEntryByPath(path[1:], c)
+			}
+		}
+	}
+	return nil
+}
+
+func FindEntryByPath(path []string, entry *Entry) *Entry {
+	if len(path) == 0 {
+		return entry
+	}
+	return findEntryByPath(path, entry)
+}
+
 func computeHash(entry *Entry) [32]byte {
 	switch entry.Type {
 	case Chunk:

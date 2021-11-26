@@ -21,6 +21,7 @@ type Node struct {
 	BootstrapAddresses   []*net.UDPAddr
 	PendingPacketQueries map[uint32]chan []byte
 	CachedEntries        *lru.ARCCache
+	ExportedDirectory    *Entry
 }
 
 func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
@@ -33,7 +34,7 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 		log.Printf("Hello from %s", addr)
 
 	case HelloReplyType:
-		log.Printf("HelloReply(%s) from %s", packet[headerLength:headerLength+int(packetLength)], addr)
+		log.Printf("HelloReply from %s", addr)
 
 	case PublicKeyType:
 		log.Printf("Public Key from %s", addr)
@@ -89,7 +90,6 @@ func SendPeriodicHello(node *Node) {
 		for _, addr := range node.BootstrapAddresses {
 			hello, err := MakeHello(1, node)
 			if err == nil {
-				log.Print("Sent hello!")
 				node.Conn.WriteToUDP(hello, addr)
 				continue
 			}
@@ -203,9 +203,7 @@ func RetrieveEntry(hash [32]byte, node *Node) Entry {
 		case 0: // Chunk
 			currentEntry.Type = Chunk
 			len := int(packetLength) - HashLength - 1
-			// TODO: chack hashes
-			//copy(h[:], packet[headerLength:headerLength+hashLength])
-			//currentEntry.hash = h
+			// TODO: check hashes
 			currentEntry.Data = make([]byte, len)
 			copy(currentEntry.Data, packet[headerLength+HashLength+1:headerLength+int(packetLength)])
 
@@ -225,8 +223,7 @@ func RetrieveEntry(hash [32]byte, node *Node) Entry {
 				copy(h[:], packet[headerLength+HashLength+1+32+i*64:headerLength+HashLength+1+i*64+32+32])
 				name := packet[headerLength+HashLength+1+i*64 : headerLength+HashLength+1+i*64+32]
 				var b [1]byte
-				name = bytes.Split(name, b[:])[0]
-				//strings.SplitAfterN(name, "", 1)
+				name = bytes.Split(name, b[:])[0] // TODO: might be buggy
 				hashes = append(hashes, h)
 				currentEntry.Children = append(currentEntry.Children, &Entry{Directory, string(name), h, nil, nil})
 			}

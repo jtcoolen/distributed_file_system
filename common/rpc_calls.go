@@ -1,6 +1,7 @@
 package common
 
 import (
+	"log"
 	"strings"
 )
 
@@ -23,6 +24,22 @@ func (t *Node) RetrieveEntryByPath(args *RetrieveEntryByPathArgs, reply *Entry) 
 	entry := FindEntryByPath(strings.Split(args.Path, "/"), &rootEntry)
 	if entry != nil {
 		*reply = *entry
+		log.Print("OK")
 	}
+	log.Print("NOOOO")
 	return nil
+}
+
+func (t *Node) DisplayDirectoryPath(args *RetrieveEntryByPathArgs, reply *string) error {
+	rootHash, err := GetPeerRoot(args.Peer)
+	if err != nil {
+		return err
+	}
+	rootEntry := RetrieveEntry(rootHash, t)
+	str, err := DisplayDirectoryFromPath(strings.Split(args.Path, "/"), &rootEntry)
+	if err == nil {
+		*reply = str
+		return nil
+	}
+	return ErrNotFound
 }

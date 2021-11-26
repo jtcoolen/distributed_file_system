@@ -71,6 +71,9 @@ func main() {
 	DownloadFromPathCmd := flag.NewFlagSet("downloadFromPath", flag.ExitOnError)
 	path := DownloadFromPathCmd.String("path", "", "path")
 	peer := DownloadFromPathCmd.String("peer", "", "peer")
+	PrintDirCmd := flag.NewFlagSet("ls", flag.ExitOnError)
+	path1 := PrintDirCmd.String("path", "", "path")
+	peer1 := PrintDirCmd.String("peer", "", "peer")
 
 	//GetPeersCmd := flag.NewFlagSet("peers", flag.ExitOnError)
 
@@ -134,6 +137,21 @@ func main() {
 		log.Print(reply.Hash)
 		//common.DisplayDirectory(reply, 0)
 		outputEntryToDisk(reply, dir)
+
+	case "ls":
+		PrintDirCmd.Parse(os.Args[2:])
+		reply := new(string)
+
+		client, err := rpc.DialHTTP("tcp", "localhost:9000")
+		if err != nil {
+			log.Fatal("dialing:", err)
+		}
+		err = client.Call("Node.DisplayDirectoryPath", common.RetrieveEntryByPathArgs{Peer: *peer1, Path: *path1}, &reply)
+		if err != nil {
+			log.Fatal("Node.DisplayDirectoryPath error:", err)
+		}
+
+		fmt.Print(*reply)
 
 	case "peers":
 		peers, err := common.GetPeers()

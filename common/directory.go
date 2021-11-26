@@ -1,6 +1,7 @@
 package common
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"fmt"
 	"strings"
@@ -71,6 +72,49 @@ func FindEntryByPath(path []string, entry *Entry) *Entry {
 		return entry
 	}
 	return findEntryByPath(path, entry)
+}
+
+func totalLength(entry *Entry) uint64 {
+	if entry.Type == 0 {
+		return uint64(len(entry.Data))
+	}
+	if len(entry.Children) == 0 {
+		return 0
+	}
+	var s uint64 = 0
+	for _, c := range entry.Children {
+		s += totalLength(c)
+	}
+	return s
+}
+
+func DisplayDirectoryFromPath(path []string, root *Entry) (string, error) {
+	entry := FindEntryByPath(path, root)
+	if entry == nil {
+		return "", ErrNotFound
+	}
+	switch entry.Type {
+	case 0:
+		return entry.Name, nil
+	case 1:
+		return entry.Name, nil
+	case 2:
+		var b bytes.Buffer
+		for _, e := range entry.Children {
+			switch e.Type {
+			case 0:
+				b.WriteString("file: ")
+			case 1:
+				b.WriteString("file: ")
+			case 2:
+				b.WriteString("directory: ")
+			}
+			b.WriteString(e.Name)
+			b.WriteString(fmt.Sprintf(" (%d bytes)\n", totalLength(e)))
+		}
+		return b.String(), nil
+	}
+	return "", nil
 }
 
 func computeHash(entry *Entry) [32]byte {

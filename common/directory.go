@@ -117,7 +117,7 @@ func DisplayDirectoryFromPath(path []string, root *Entry) (string, error) {
 	return "", nil
 }
 
-func computeHash(entry *Entry) [32]byte {
+func ComputeHash(entry *Entry) [32]byte {
 	switch entry.Type {
 	case Chunk:
 		concatHash := make([]byte, 1+len(entry.Data))
@@ -128,7 +128,7 @@ func computeHash(entry *Entry) [32]byte {
 		concatHash := make([]byte, 1+32*len(entry.Children))
 		concatHash[0] = 1
 		for i, c := range entry.Children {
-			h := computeHash(c)
+			h := ComputeHash(c)
 			copy(concatHash[1+i*32:1+i*32+32], h[:])
 		}
 		return sha256.Sum256(concatHash)
@@ -136,7 +136,7 @@ func computeHash(entry *Entry) [32]byte {
 		concatHash := make([]byte, 1+64*len(entry.Children))
 		concatHash[0] = 2
 		for i, c := range entry.Children {
-			h := computeHash(c)
+			h := ComputeHash(c)
 			copy(concatHash[1+i*64:1+i*64+32], []byte(c.Name))
 			copy(concatHash[1+i*64+32:1+i*64+64], h[:])
 		}

@@ -3,7 +3,6 @@ package common
 import (
 	"bytes"
 	"crypto/ecdsa"
-	"crypto/sha256"
 	"encoding/binary"
 	"log"
 	"net"
@@ -50,7 +49,7 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 
 	case RootType:
 		log.Printf("Root(%x) from %s", packet[headerLength:headerLength+int(packetLength)], addr)
-		reply, err := makeRootReply(id, sha256.Sum256([]byte("")), node)
+		reply, err := makeRootReply(id, node.ExportedDirectory.Hash, node)
 		if err == nil {
 			node.Conn.WriteToUDP(reply, addr)
 			break

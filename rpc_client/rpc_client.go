@@ -3,6 +3,7 @@ package main
 import (
 	"dfs/common"
 	"encoding/hex"
+	"flag"
 	"fmt"
 	"log"
 	"net/rpc"
@@ -19,15 +20,13 @@ func outputEntryToDisk(entry *common.Entry, path string) {
 		} else {
 			n = entry.Name
 		}
-		//n = strings.SplitAfter(n, "")[0]
 		s := fmt.Sprintf("%s/%s", path, n)
-		log.Printf("Got name=%d", len(n))
 		f, err := os.OpenFile(s, os.O_RDWR|os.O_CREATE, 0644)
 		if err != nil {
 			e, _ := err.(*os.PathError)
 			log.Fatal(e)
 		}
-		//defer f.Close()
+		defer f.Close()
 		f.Write(entry.Data)
 
 	case 1:
@@ -67,42 +66,56 @@ func outputEntryToDisk(entry *common.Entry, path string) {
 }
 
 func main() {
-	hash_str := os.Args[1]
+	DownloadCmd := flag.NewFlagSet("download", flag.ExitOnError)
+	hash_str := DownloadCmd.String("hash", "", "hash")
 
-	reply := new(common.Entry)
+	//GetPeersCmd := flag.NewFlagSet("peers", flag.ExitOnError)
 
-	client, err := rpc.DialHTTP("tcp", "localhost:9000")
-	if err != nil {
-		log.Fatal("dialing:", err)
+	if len(os.Args) < 2 {
+		fmt.Println("expected 'download' or 'peers' subcommands")
+		os.Exit(1)
 	}
 
-	hash_bytes, err := hex.DecodeString(hash_str)
-	if err != nil {
-		log.Fatal(err)
+	switch os.Args[1] {
+	case "download":
+		DownloadCmd.Parse(os.Args[2:])
+		reply := new(common.Entry)
+
+		client, err := rpc.DialHTTP("tcp", "localhost:9000")
+		if err != nil {
+			log.Fatal("dialing:", err)
+		}
+
+		hash_bytes, err := hex.DecodeString(*hash_str)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		var hash [32]byte
+		copy(hash[:], hash_bytes)
+
+		err = client.Call("Node.RetrieveEntry", hash, &reply)
+		if err != nil {
+			log.Fatal("Node.RetrieveEntry error:", err)
+		}
+
+		dir, err := os.Getwd()
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		outputEntryToDisk(reply, dir)
+	case "peers":
+		peers, err := common.GetPeers()
+		if err != nil {
+			log.Fatal(err)
+		}
+		for i, p := range peers {
+			fmt.Printf("%d: %s\n", i, string(p))
+		}
+
+	default:
+		fmt.Println("expected 'download' or 'peers' subcommands")
+		os.Exit(1)
 	}
-
-	var hash [32]byte
-	copy(hash[:], hash_bytes)
-
-	err = client.Call("Node.RetrieveEntry", hash, &reply)
-	if err != nil {
-		log.Fatal("Node.RetrieveEntry error:", err)
-	}
-
-	log.Printf("Got: %d", reply.Type)
-
-	//common.DisplayDirectory(reply, 0)
-
-	dir, err := os.Getwd()
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	/*_, err = os.OpenFile("/home/jco/dfs/root/hello", os.O_RDWR|os.O_CREATE, 0644)
-	if err != nil {
-		e, _ := err.(*os.PathError)
-		log.Fatal(e)
-	}*/
-
-	outputEntryToDisk(reply, dir)
 }

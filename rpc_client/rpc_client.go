@@ -119,7 +119,7 @@ func main() {
 		//log.Print(strings.Split("documents/README.text", "/"))
 
 		log.Print(*path, *peer)
-		log.Print(len(strings.Split(*path, "/")))
+		log.Print(len(strings.Split(*path, "/")), strings.Split(*path, "/"))
 		client, err := rpc.DialHTTP("tcp", "localhost:9000")
 		if err != nil {
 			log.Fatal("dialing:", err)

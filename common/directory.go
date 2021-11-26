@@ -95,9 +95,9 @@ func DisplayDirectoryFromPath(path []string, root *Entry) (string, error) {
 	}
 	switch entry.Type {
 	case 0:
-		return entry.Name, nil
+		return fmt.Sprintf("file: %s (%d bytes)", entry.Name, totalLength(entry)), nil
 	case 1:
-		return entry.Name, nil
+		return fmt.Sprintf("file: %s (%d bytes)", entry.Name, totalLength(entry)), nil
 	case 2:
 		var b bytes.Buffer
 		for _, e := range entry.Children {

@@ -21,7 +21,14 @@ func (t *Node) RetrieveEntryByPath(args *RetrieveEntryByPathArgs, reply *Entry) 
 		return err
 	}
 	rootEntry := RetrieveEntry(rootHash, t)
-	entry := FindEntryByPath(strings.Split(args.Path, "/"), &rootEntry)
+	s := strings.Split(args.Path, "/")
+	if s[0] == "" {
+		s = s[1:]
+	}
+	if s[len(s)-1] == "" {
+		s = s[:len(s)-1]
+	}
+	entry := FindEntryByPath(s, &rootEntry)
 	if entry != nil {
 		*reply = *entry
 		log.Print("OK")
@@ -36,7 +43,14 @@ func (t *Node) DisplayDirectoryPath(args *RetrieveEntryByPathArgs, reply *string
 		return err
 	}
 	rootEntry := RetrieveEntry(rootHash, t)
-	str, err := DisplayDirectoryFromPath(strings.Split(args.Path, "/"), &rootEntry)
+	s := strings.Split(args.Path, "/")
+	if s[0] == "" {
+		s = s[1:]
+	}
+	if s[len(s)-1] == "" {
+		s = s[:len(s)-1]
+	}
+	str, err := DisplayDirectoryFromPath(s, &rootEntry)
 	if err == nil {
 		*reply = str
 		return nil

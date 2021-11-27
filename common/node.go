@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto/ecdsa"
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -74,7 +73,7 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 		}
 
 	case NoDatumType:
-		//log.Printf("NoDatum(%x) from %s", packet[headerLength:headerLength+int(packetLength)], addr)
+		log.Printf("NoDatum(%x) from %s", packet[headerLength:headerLength+int(packetLength)], addr)
 		if node.PendingPacketQueries[id] != nil {
 			node.PendingPacketQueries[id] <- packet[:headerLength+int(packetLength)]
 		}
@@ -179,7 +178,7 @@ func ContactNodeBehindNat(peer string, node *Node) error {
 	addr, err := GetPeerAddresses(peer)
 	if err != nil {
 		log.Printf("cannot retrieve peer %s addresses: %s", peer, err.Error())
-		return errors.New(fmt.Sprintf("cannot retrieve peer %s addresses: %s", peer, err.Error()))
+		return fmt.Errorf("cannot retrieve peer %s addresses: %s", peer, err.Error())
 	}
 	for _, a := range addr {
 		log.Printf("Addr = %s", string(a))
@@ -253,7 +252,7 @@ func RetrieveEntry(hash [32]byte, addr *net.UDPAddr, node *Node) Entry {
 		}
 
 		node.PendingPacketQueries[id] = make(chan []byte) // TODO: check if there's already a pending query
-		_, err = node.Conn.WriteToUDP(datum, node.BootstrapAddresses[0])
+		_, err = node.Conn.WriteToUDP(datum, addr)
 		if err != nil {
 			log.Fatal(err)
 		}

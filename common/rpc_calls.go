@@ -17,6 +17,9 @@ type RetrieveEntryByPathArgs struct {
 
 func (t *Node) RetrieveEntry(args *RetrieveEntryArgs, reply *Entry) error {
 	peer, err := GetPeerAddresses(args.Peer)
+	if err != nil {
+		return err
+	}
 	dest, err := net.ResolveUDPAddr("udp", string(peer[0]))
 	if err != nil {
 		return err
@@ -34,6 +37,9 @@ func (t *Node) RetrieveEntryByPath(args *RetrieveEntryByPathArgs, reply *Entry) 
 		return err
 	}
 	peer, err := GetPeerAddresses(args.Peer)
+	if err != nil {
+		return err
+	}
 	dest, err := net.ResolveUDPAddr("udp", string(peer[0]))
 	if err != nil {
 		return err

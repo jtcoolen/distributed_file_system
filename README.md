@@ -15,11 +15,11 @@
 
 # TODO:
 ## High priority
-[] export our own tree (reply back to GetDatum(hash) with a Datum(hash)) (Minoo)
-[] implement a RPC call UpdateDirectory() to update our own directory (add commands mkdir and create to create new directories and files, respectively) (Minoo)
-[] implement NAT Traversal (Minoo & Julien)
-[] Implement DH key exchange (Julien)
-[] Write report: Usage instructions, Architecture, Features (with logs)
+- [] export our own tree (reply back to GetDatum(hash) with a Datum(hash)) (Minoo)
+- [] implement a RPC call UpdateDirectory() to update our own directory (add commands mkdir and create to create new directories and files, respectively) (Minoo)
+- [] implement NAT Traversal (Minoo & Julien)
+- [] Implement DH key exchange (Julien)
+- [] Write report: Usage instructions, Architecture, Features (with logs)
 ## Low priority
-[] Packet Encryption?
-[] Pipelining?
+- [] Packet Encryption?
+- [] Pipelining?

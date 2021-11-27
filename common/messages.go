@@ -2,6 +2,7 @@ package common
 
 import (
 	"encoding/binary"
+	"net"
 )
 
 var headerLength = 7
@@ -110,6 +111,43 @@ func makeGetDatum(id uint32, hash [32]byte, node *Node) ([]byte, error) {
 		return nil, err
 	}
 	copy(h[headerLength+packetLength:], sign)
+	return h, nil
+}
+
+func IPAndPort(ip net.UDPAddr) []byte {
+	addr := make([]byte, 18)
+	copy(addr[:], ip.IP)
+	binary.BigEndian.PutUint16(addr[16:], uint16(ip.Port)) // TODO: return error if integer exceeds 2 bytes of capacity
+	return addr
+}
+
+func makeNatTraversalRequest(id uint32, addr net.UDPAddr, node *Node) ([]byte, error) {
+	dataLength := 18
+	h := make([]byte, headerLength+dataLength+SignatureLength)
+	binary.BigEndian.PutUint32(h[0:4], id)
+	h[4] = NatTraversalRequestType
+	binary.BigEndian.PutUint16(h[5:headerLength], uint16(dataLength))
+	copy(h[headerLength:], IPAndPort(addr))
+	sign, err := SignECDSA(node.PrivateKey, h[:headerLength+dataLength])
+	if err != nil {
+		return nil, err
+	}
+	copy(h[headerLength+dataLength:], sign)
+	return h, nil
+}
+
+func makeNatTraversal(id uint32, addr net.UDPAddr, node *Node) ([]byte, error) {
+	dataLength := 18
+	h := make([]byte, headerLength+dataLength+SignatureLength)
+	binary.BigEndian.PutUint32(h[0:4], id)
+	h[4] = NatTraversalType
+	binary.BigEndian.PutUint16(h[5:headerLength], uint16(dataLength))
+	copy(h[headerLength:], IPAndPort(addr))
+	sign, err := SignECDSA(node.PrivateKey, h[:headerLength+dataLength])
+	if err != nil {
+		return nil, err
+	}
+	copy(h[headerLength+dataLength:], sign)
 	return h, nil
 }
 

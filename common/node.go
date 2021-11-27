@@ -145,7 +145,7 @@ func ReceiveIncomingMessages(node *Node) {
 }
 
 func waitPacket(id uint32, packet []byte, node *Node, addr *net.UDPAddr, timeout time.Duration) []byte { // TODO: return error after max retries
-	var delay time.Duration = 200000000
+	var delay time.Duration = 1000000000
 	limit := time.After(delay)
 	stopAt := time.After(timeout)
 

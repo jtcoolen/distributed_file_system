@@ -1,7 +1,7 @@
-## Start the node
+# Start the node
 ```go run dfs/node```
 
-## start the RPC client
+# start the RPC client
 
 ## List files
 ```go run dfs/rpc_client ls -path=/ -peer=jch.irif.fr```

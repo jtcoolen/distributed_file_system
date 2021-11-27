@@ -32,6 +32,12 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 	switch packetType {
 	case HelloType:
 		log.Printf("Hello from %s", addr)
+		reply, err := MakeHelloReply(id, node)
+		if err == nil {
+			node.Conn.WriteToUDP(reply, addr)
+			break
+		}
+		log.Printf("%s", err)
 
 	case HelloReplyType:
 		log.Printf("HelloReply from %s with id=%d", addr, binary.BigEndian.Uint32(packet[0:4]))
@@ -65,6 +71,14 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 
 	case GetDatumType:
 		//log.Printf("GetDatum from %s", addr)
+		var h [32]byte
+		copy(h[:], packet[headerLength:headerLength+HashLength])
+		reply, err := makeDatum(id, h, node)
+		if err == nil {
+			node.Conn.WriteToUDP(reply, addr)
+			break
+		}
+		log.Printf("%s", err)
 
 	case DatumType:
 		//log.Printf("Datum(%x) from %s with id %d", packet[headerLength:headerLength+int(packetLength)], addr, id)

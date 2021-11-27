@@ -114,6 +114,85 @@ func makeGetDatum(id uint32, hash [32]byte, node *Node) ([]byte, error) {
 	return h, nil
 }
 
+func makeDatum(id uint32, hash [32]byte, node *Node) ([]byte, error) {
+
+	entry := findEntry(hash, node.ExportedDirectory)
+	if entry == nil {
+		return nil, ErrNotFound
+	}
+
+	switch entry.Type {
+	case Chunk:
+		packetLength := HashLength + 1 + len(entry.Data)
+		h := make([]byte, headerLength+packetLength+SignatureLength)
+		binary.BigEndian.PutUint32(h[0:4], id)
+		h[4] = DatumType
+		binary.BigEndian.PutUint16(h[5:headerLength], uint16(packetLength))
+		hash := make([]byte, HashLength)
+		hh := ComputeHash(entry)
+		copy(hash[:], hh[:])
+		copy(h[headerLength:], hash)
+
+		h[headerLength+HashLength] = 0
+		copy(h[headerLength+HashLength+1:], entry.Data)
+
+		sign, err := SignECDSA(node.PrivateKey, h[:headerLength+packetLength])
+		if err != nil {
+			return nil, err
+		}
+		copy(h[headerLength+packetLength:], sign)
+		return h, nil
+
+	case Tree:
+		packetLength := HashLength + 1 + 32*len(entry.Children)
+		h := make([]byte, headerLength+packetLength+SignatureLength)
+		binary.BigEndian.PutUint32(h[0:4], id)
+		h[4] = DatumType
+		binary.BigEndian.PutUint16(h[5:headerLength], uint16(packetLength))
+		hash := make([]byte, HashLength)
+		hh := ComputeHash(entry)
+		copy(hash[:], hh[:])
+		copy(h[headerLength:], hash)
+
+		h[headerLength+HashLength] = 1
+		for i, c := range entry.Children {
+			hc := ComputeHash(c)
+			copy(h[headerLength+HashLength+1+i*32:1+i*32+32], hc[:])
+		}
+
+		sign, err := SignECDSA(node.PrivateKey, h[:headerLength+packetLength])
+		if err != nil {
+			return nil, err
+		}
+		copy(h[headerLength+packetLength:], sign)
+		return h, nil
+
+	case Directory:
+		packetLength := HashLength + 1 + 64*len(entry.Children)
+		h := make([]byte, headerLength+packetLength+SignatureLength)
+		binary.BigEndian.PutUint32(h[0:4], id)
+		h[4] = DatumType
+		binary.BigEndian.PutUint16(h[5:headerLength], uint16(packetLength))
+		hash := make([]byte, HashLength)
+		hh := ComputeHash(entry)
+		copy(hash[:], hh[:])
+		copy(h[headerLength:], hash)
+		h[headerLength+HashLength] = 2
+		for i, c := range entry.Children {
+			hc := ComputeHash(c)
+			copy(h[headerLength+HashLength+1+i*64:1+i*64+32], []byte(c.Name))
+			copy(h[headerLength+HashLength+1+i*64+32:1+i*64+64], hc[:])
+		}
+		sign, err := SignECDSA(node.PrivateKey, h[:headerLength+packetLength])
+		if err != nil {
+			return nil, err
+		}
+		copy(h[headerLength+packetLength:], sign)
+		return h, nil
+	}
+	return nil, ErrNoSuchType
+}
+
 func IPAndPort(ip net.UDPAddr) []byte {
 	addr := make([]byte, 18)
 	copy(addr[:], ip.IP)

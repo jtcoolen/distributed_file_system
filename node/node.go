@@ -9,7 +9,7 @@ import (
 	lru "github.com/hashicorp/golang-lru"
 )
 
-const clientName = "HTTP200JokesAreOK"
+const clientName = "hello"
 
 const MAX_CACHED_ENTRIES = 10
 

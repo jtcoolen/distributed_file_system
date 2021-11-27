@@ -68,6 +68,7 @@ func outputEntryToDisk(entry *common.Entry, path string) {
 func main() {
 	DownloadCmd := flag.NewFlagSet("download", flag.ExitOnError)
 	hash_str := DownloadCmd.String("hash", "", "hash")
+	peerDownload := DownloadCmd.String("peer", "", "peer")
 	DownloadFromPathCmd := flag.NewFlagSet("downloadFromPath", flag.ExitOnError)
 	path := DownloadFromPathCmd.String("path", "", "path")
 	peer := DownloadFromPathCmd.String("peer", "", "peer")
@@ -116,7 +117,7 @@ func main() {
 		copy(hash[:], hash_bytes)
 		log.Printf("hash %x", hash)
 
-		err = client.Call("Node.RetrieveEntry", hash, &reply)
+		err = client.Call("Node.RetrieveEntry", common.RetrieveEntryArgs{Peer: *peerDownload, Hash: hash}, &reply)
 		if err != nil {
 			log.Fatal("Node.RetrieveEntry error:", err)
 		}

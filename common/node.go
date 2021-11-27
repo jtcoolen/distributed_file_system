@@ -70,7 +70,7 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 		//log.Printf("RootReply from %s", addr)
 
 	case GetDatumType:
-		//log.Printf("GetDatum from %s", addr)
+		log.Printf("GetDatum from %s", addr)
 		var h [32]byte
 		copy(h[:], packet[headerLength:headerLength+HashLength])
 		reply, err := makeDatum(id, h, node)
@@ -81,7 +81,7 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 		log.Printf("%s", err)
 
 	case DatumType:
-		//log.Printf("Datum(%x) from %s with id %d", packet[headerLength:headerLength+int(packetLength)], addr, id)
+		log.Printf("Datum(%x) from %s with id %d", packet[headerLength:headerLength+int(packetLength)], addr, id)
 		if node.PendingPacketQueries[id] != nil {
 			node.PendingPacketQueries[id] <- packet[:headerLength+int(packetLength)]
 		}

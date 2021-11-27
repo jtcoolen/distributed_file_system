@@ -76,7 +76,7 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 		reply, err := makeDatum(id, h, node)
 		if err == nil {
 			node.Conn.WriteToUDP(reply, addr)
-			log.Printf("Replied to getDatum with id=%d", id)
+			log.Printf("Replied to getDatum with id=%d to address %s", id, addr.Network())
 			break
 		}
 		log.Printf("%s", err)
@@ -271,7 +271,7 @@ func RetrieveEntry(hash [32]byte, addr *net.UDPAddr, node *Node) Entry {
 		if err != nil {
 			log.Fatal(err)
 		}
-		log.Printf("Sent getDatum(%x) with id=%d", hashes[0], id)
+		log.Printf("Sent getDatum(%x) with id=%d to address %s", hashes[0], id, addr)
 
 		packet := waitPacket(id, datum, node, addr, 20*time.Second) // TODO: check if packet is valid
 		if packet == nil {

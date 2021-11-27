@@ -35,7 +35,10 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 		log.Printf("Hello from %s", addr)
 
 	case HelloReplyType:
-		log.Printf("HelloReply from %s", addr)
+		log.Printf("HelloReply from %s with id=%d", addr, binary.BigEndian.Uint32(packet[0:4]))
+		if node.PendingPacketQueries[id] != nil {
+			node.PendingPacketQueries[id] <- packet[:headerLength+int(packetLength)]
+		}
 
 	case PublicKeyType:
 		log.Printf("Public Key from %s", addr)
@@ -142,6 +145,7 @@ func waitPacket(id uint32, packet []byte, node *Node, timeout time.Duration) []b
 				return out
 
 			case <-stopAt:
+				log.Printf("STOP!!!")
 				return nil
 
 			case <-limit:
@@ -177,17 +181,22 @@ func ContactNodeBehindNat(peer string, node *Node) error {
 		return errors.New(fmt.Sprintf("cannot retrieve peer %s addresses: %s", peer, err.Error()))
 	}
 	for _, a := range addr {
+		log.Printf("Addr = %s", string(a))
 		dst, err := net.ResolveUDPAddr("udp", string(a))
 		if err != nil {
 			return err
 		}
-		hello, err := MakeHello(1000000, node)
+		log.Printf("Got addr = %s", dst.String())
+		log.Printf("Got addr = %s", dst.Network())
+		var id uint32 = 1000000
+		hello, err := MakeHello(id, node)
 		if err != nil {
 			return err
 		}
+		node.PendingPacketQueries[id] = make(chan []byte) // TODO: sendPacket function
 		node.Conn.WriteToUDP(hello, dst)
 
-		p := waitPacket(1000000, hello, node, 1*time.Minute)
+		p := waitPacket(id, hello, node, 1*time.Minute)
 		if p != nil {
 			return nil
 		}
@@ -195,7 +204,8 @@ func ContactNodeBehindNat(peer string, node *Node) error {
 		log.Printf("cannot contact peer %s", peer)
 
 		for i := 0; i < 3; i++ {
-			hello, err = makeNatTraversalRequest(1000001, *dst, node)
+			id++
+			hello, err = makeNatTraversalRequest(id, *dst, node)
 			if err == nil {
 				node.Conn.WriteToUDP(hello, node.BootstrapAddresses[1])
 				continue
@@ -204,7 +214,8 @@ func ContactNodeBehindNat(peer string, node *Node) error {
 		log.Printf("Sent nat traversal request to Juliusz's peer")
 		time.Sleep(1 * time.Second)
 
-		hello, err = MakeHello(1000002, node)
+		id++
+		hello, err = MakeHello(id, node)
 		if err == nil {
 			node.Conn.WriteToUDP(hello, dst)
 			continue

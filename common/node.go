@@ -76,7 +76,7 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 		reply, err := makeDatum(id, h, node)
 		if err == nil {
 			node.Conn.WriteToUDP(reply, addr)
-			log.Printf("Replied to getDatum with id=%d to address %s", id, addr.Network())
+			log.Printf("Replied to getDatum with id=%d to address %s", id, addr)
 			break
 		}
 		log.Printf("%s", err)

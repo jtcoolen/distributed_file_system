@@ -164,6 +164,10 @@ func waitPacket(id uint32, packet []byte, node *Node, addr *net.UDPAddr, timeout
 				return nil
 
 			case <-limit:
+				log.Printf("OKKKKKKK!!!!!!!!!")
+				delete(node.PendingPacketQueries, id)
+				node.PendingPacketQueries[id] = make(chan []byte)
+
 				_, err := node.Conn.WriteToUDP(packet, addr)
 				if err != nil {
 					log.Fatal(err)

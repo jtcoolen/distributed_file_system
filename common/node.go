@@ -70,13 +70,13 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 		//log.Printf("RootReply from %s", addr)
 
 	case GetDatumType:
-		log.Printf("GetDatum from %s", addr)
+		log.Printf("GetDatum from %s with id %d", addr, id)
 		var h [32]byte
 		copy(h[:], packet[headerLength:headerLength+HashLength])
 		reply, err := makeDatum(id, h, node)
 		if err == nil {
 			node.Conn.WriteToUDP(reply, addr)
-			log.Print("Replied to getDatum")
+			log.Printf("Replied to getDatum with id=%d", id)
 			break
 		}
 		log.Printf("%s", err)
@@ -271,8 +271,12 @@ func RetrieveEntry(hash [32]byte, addr *net.UDPAddr, node *Node) Entry {
 		if err != nil {
 			log.Fatal(err)
 		}
+		log.Printf("Sent getDatum(%x) with id=%d", hashes[0], id)
 
-		packet := waitPacket(id, datum, node, addr, 5*time.Minute) // TODO: check if packet is valid
+		packet := waitPacket(id, datum, node, addr, 20*time.Second) // TODO: check if packet is valid
+		if packet == nil {
+			return root
+		}
 		if packet[4] == NoDatumType {
 			log.Print("No Datum!")
 			return root

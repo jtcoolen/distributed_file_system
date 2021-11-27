@@ -187,10 +187,10 @@ func makeDatum(id uint32, hash [32]byte, node *Node) ([]byte, error) {
 			copy(h[headerLength+HashLength+1+i*64+32:headerLength+HashLength+1+i*64+64], hc[:])
 		}
 		sign, err := SignECDSA(node.PrivateKey, h[:headerLength+packetLength])
-		log.Print("Message signed")
 		if err != nil {
 			return nil, err
 		}
+		log.Print("Message signed")
 		copy(h[headerLength+packetLength:], sign)
 		return h, nil
 	}

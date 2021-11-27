@@ -77,6 +77,7 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 		}
 
 	case NatTraversalType:
+		log.Printf("NatTraversal from %s", addr)
 		var ip net.IP = packet[headerLength : headerLength+16]
 		port := binary.BigEndian.Uint16(packet[headerLength+16 : headerLength+16+2])
 		dst, err := net.ResolveUDPAddr("udp", string(ip)+fmt.Sprintf(":%d", port))
@@ -178,30 +179,31 @@ func ContactNodeBehindNat(peer string, node *Node) error {
 	for _, a := range addr {
 		dst, err := net.ResolveUDPAddr("udp", string(a))
 		if err != nil {
-			log.Fatal(err)
 			return err
 		}
 		hello, err := MakeHello(1000000, node)
-		if err == nil {
-			node.Conn.WriteToUDP(hello, dst)
-			continue
+		if err != nil {
+			return err
 		}
-		p := waitPacket(1000000, hello, node, 5*time.Second)
+		node.Conn.WriteToUDP(hello, dst)
+
+		p := waitPacket(1000000, hello, node, 1*time.Minute)
 		if p != nil {
-			return errors.New("waitPacket: timeout")
+			return nil
 		}
-		log.Printf("cannot contact peer %s: %s", peer, err.Error())
-		hello, err = makeNatTraversalRequest(1000001, *dst, node)
-		if err == nil {
-			node.Conn.WriteToUDP(hello, node.BootstrapAddresses[1])
-			continue
+		// Timeout reached
+		log.Printf("cannot contact peer %s", peer)
+
+		for i := 0; i < 3; i++ {
+			hello, err = makeNatTraversalRequest(1000001, *dst, node)
+			if err == nil {
+				node.Conn.WriteToUDP(hello, node.BootstrapAddresses[1])
+				continue
+			}
 		}
-		p = waitPacket(1000001, hello, node, 5*time.Minute)
-		if p == nil {
-			log.Print("Juliusz did not reply to NatTraversalRequest")
-			return errors.New("Juliusz did not reply to NatTraversalRequest")
-		}
+		log.Printf("Sent nat traversal request to Juliusz's peer")
 		time.Sleep(1 * time.Second)
+
 		hello, err = MakeHello(1000002, node)
 		if err == nil {
 			node.Conn.WriteToUDP(hello, dst)

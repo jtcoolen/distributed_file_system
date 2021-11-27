@@ -157,7 +157,7 @@ func makeDatum(id uint32, hash [32]byte, node *Node) ([]byte, error) {
 		h[headerLength+HashLength] = 1
 		for i, c := range entry.Children {
 			hc := ComputeHash(c)
-			copy(h[headerLength+HashLength+1+i*32:1+i*32+32], hc[:])
+			copy(h[headerLength+HashLength+1+i*32:headerLength+HashLength+1+i*32+32], hc[:])
 		}
 
 		sign, err := SignECDSA(node.PrivateKey, h[:headerLength+packetLength])
@@ -180,8 +180,8 @@ func makeDatum(id uint32, hash [32]byte, node *Node) ([]byte, error) {
 		h[headerLength+HashLength] = 2
 		for i, c := range entry.Children {
 			hc := ComputeHash(c)
-			copy(h[headerLength+HashLength+1+i*64:1+i*64+32], []byte(c.Name))
-			copy(h[headerLength+HashLength+1+i*64+32:1+i*64+64], hc[:])
+			copy(h[headerLength+HashLength+1+i*64:headerLength+HashLength+1+i*64+32], []byte(c.Name))
+			copy(h[headerLength+HashLength+1+i*64+32:headerLength+HashLength+1+i*64+64], hc[:])
 		}
 		sign, err := SignECDSA(node.PrivateKey, h[:headerLength+packetLength])
 		if err != nil {

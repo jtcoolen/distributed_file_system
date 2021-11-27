@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"crypto/ecdsa"
 	"encoding/binary"
+	"errors"
+	"fmt"
 	"log"
 	"net"
 	"time"
@@ -74,6 +76,19 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 			node.PendingPacketQueries[id] <- packet[:headerLength+int(packetLength)]
 		}
 
+	case NatTraversalType:
+		var ip net.IP = packet[headerLength : headerLength+16]
+		port := binary.BigEndian.Uint16(packet[headerLength+16 : headerLength+16+2])
+		dst, err := net.ResolveUDPAddr("udp", string(ip)+fmt.Sprintf(":%d", port))
+		if err != nil {
+			log.Printf("OOOPSS cannot resolve %s: %s", string(ip)+fmt.Sprintf(":%d", port), err.Error())
+			break
+		}
+		hello, err := MakeHello(1000006, node)
+		if err == nil {
+			node.Conn.WriteToUDP(hello, dst)
+		}
+
 	case ErrorType:
 		log.Printf("Error: %s from %s", string(packet[headerLength:headerLength+int(packetLength)]), addr)
 
@@ -110,9 +125,10 @@ func ReceiveIncomingMessages(node *Node) {
 	}
 }
 
-func waitPacket(id uint32, packet []byte, node *Node) []byte { // TODO: return error after max retries
+func waitPacket(id uint32, packet []byte, node *Node, timeout time.Duration) []byte { // TODO: return error after max retries
 	var delay time.Duration = 200000000
 	limit := time.After(delay)
+	stopAt := time.After(timeout)
 
 	var v chan []byte = node.PendingPacketQueries[id]
 
@@ -123,6 +139,9 @@ func waitPacket(id uint32, packet []byte, node *Node) []byte { // TODO: return e
 			select {
 			case out := <-v:
 				return out
+
+			case <-stopAt:
+				return nil
 
 			case <-limit:
 				_, err := node.Conn.WriteToUDP(packet, node.BootstrapAddresses[0])
@@ -148,6 +167,48 @@ func cache(entry *Entry, node *Node) {
 		node.CachedEntries.Add(entry.Hash, e)
 		cache(c, node)
 	}
+}
+
+func ContactNodeBehindNat(peer string, node *Node) error {
+	addr, err := GetPeerAddresses(peer)
+	if err != nil {
+		log.Printf("cannot retrieve peer %s addresses: %s", peer, err.Error())
+		return errors.New(fmt.Sprintf("cannot retrieve peer %s addresses: %s", peer, err.Error()))
+	}
+	for _, a := range addr {
+		dst, err := net.ResolveUDPAddr("udp", string(a))
+		if err != nil {
+			log.Fatal(err)
+			return err
+		}
+		hello, err := MakeHello(1000000, node)
+		if err == nil {
+			node.Conn.WriteToUDP(hello, dst)
+			continue
+		}
+		p := waitPacket(1000000, hello, node, 5*time.Second)
+		if p != nil {
+			return errors.New("waitPacket: timeout")
+		}
+		log.Printf("cannot contact peer %s: %s", peer, err.Error())
+		hello, err = makeNatTraversalRequest(1000001, *dst, node)
+		if err == nil {
+			node.Conn.WriteToUDP(hello, node.BootstrapAddresses[1])
+			continue
+		}
+		p = waitPacket(1000001, hello, node, 5*time.Minute)
+		if p == nil {
+			log.Print("Juliusz did not reply to NatTraversalRequest")
+			return errors.New("Juliusz did not reply to NatTraversalRequest")
+		}
+		time.Sleep(1 * time.Second)
+		hello, err = MakeHello(1000002, node)
+		if err == nil {
+			node.Conn.WriteToUDP(hello, dst)
+			continue
+		}
+	}
+	return nil
 }
 
 func RetrieveEntry(hash [32]byte, node *Node) Entry {
@@ -182,7 +243,7 @@ func RetrieveEntry(hash [32]byte, node *Node) Entry {
 			log.Fatal(err)
 		}
 
-		packet := waitPacket(id, datum, node) // TODO: check if packet is valid
+		packet := waitPacket(id, datum, node, 5*time.Minute) // TODO: check if packet is valid
 		if packet[4] == NoDatumType {
 			log.Print("No Datum!")
 			return root

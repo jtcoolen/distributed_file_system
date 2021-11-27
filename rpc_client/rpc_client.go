@@ -74,6 +74,8 @@ func main() {
 	PrintDirCmd := flag.NewFlagSet("ls", flag.ExitOnError)
 	path1 := PrintDirCmd.String("path", "", "path")
 	peer1 := PrintDirCmd.String("peer", "", "peer")
+	ContactNodeCmd := flag.NewFlagSet("contactNode", flag.ExitOnError)
+	peer2 := ContactNodeCmd.String("peer", "", "peer")
 
 	//GetPeersCmd := flag.NewFlagSet("peers", flag.ExitOnError)
 
@@ -83,6 +85,19 @@ func main() {
 	}
 
 	switch os.Args[1] {
+	case "contactNode":
+		ContactNodeCmd.Parse(os.Args[2:])
+		reply := new(string)
+
+		client, err := rpc.DialHTTP("tcp", "localhost:9000")
+		if err != nil {
+			log.Fatal("dialing:", err)
+		}
+		err = client.Call("Node.ContactNode", *peer2, &reply)
+		if err != nil {
+			log.Fatal("Node.ContactNode error:", err)
+		}
+
 	case "download":
 		DownloadCmd.Parse(os.Args[2:])
 		reply := new(common.Entry)

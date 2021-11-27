@@ -57,3 +57,7 @@ func (t *Node) DisplayDirectoryPath(args *RetrieveEntryByPathArgs, reply *string
 	}
 	return ErrNotFound
 }
+
+func (t *Node) ContactNode(peer string, reply *string) error {
+	return ContactNodeBehindNat(peer, t)
+}

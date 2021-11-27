@@ -2,6 +2,7 @@ package common
 
 import (
 	"encoding/binary"
+	"log"
 	"net"
 )
 
@@ -120,7 +121,7 @@ func makeDatum(id uint32, hash [32]byte, node *Node) ([]byte, error) {
 	if entry == nil {
 		return nil, ErrNotFound
 	}
-
+	log.Printf("Entry type %d found %x ; hash %x", entry.Type, entry.Hash, hash)
 	switch entry.Type {
 	case Chunk:
 		packetLength := HashLength + 1 + len(entry.Data)
@@ -140,6 +141,7 @@ func makeDatum(id uint32, hash [32]byte, node *Node) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
+		log.Print("Message signed")
 		copy(h[headerLength+packetLength:], sign)
 		return h, nil
 
@@ -164,6 +166,7 @@ func makeDatum(id uint32, hash [32]byte, node *Node) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
+		log.Print("Message signed")
 		copy(h[headerLength+packetLength:], sign)
 		return h, nil
 
@@ -184,12 +187,14 @@ func makeDatum(id uint32, hash [32]byte, node *Node) ([]byte, error) {
 			copy(h[headerLength+HashLength+1+i*64+32:headerLength+HashLength+1+i*64+64], hc[:])
 		}
 		sign, err := SignECDSA(node.PrivateKey, h[:headerLength+packetLength])
+		log.Print("Message signed")
 		if err != nil {
 			return nil, err
 		}
 		copy(h[headerLength+packetLength:], sign)
 		return h, nil
 	}
+	log.Print("ErrNoSuchType")
 	return nil, ErrNoSuchType
 }
 

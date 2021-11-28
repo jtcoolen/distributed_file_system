@@ -293,7 +293,6 @@ func RetrieveEntry(hash [32]byte, peer string, addr *net.UDPAddr, node *Node) En
 		}
 		if packet[4] == NoDatumType {
 			log.Print("No Datum!")
-			return root
 		}
 
 		currentEntry = findEntry(hashes[0], &root)

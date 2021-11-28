@@ -191,18 +191,9 @@ func cache(entry *Entry, node *Node) {
 	}
 }
 
-func ContactNodeBehindNat(peer string, node *Node) error {
-	addr, err := GetPeerAddresses(peer)
-	if err != nil {
-		log.Printf("cannot retrieve peer %s addresses: %s", peer, err.Error())
-		return fmt.Errorf("cannot retrieve peer %s addresses: %s", peer, err.Error())
-	}
-	for _, a := range addr {
-		log.Printf("Addr = %s", string(a))
-		dest, err := net.ResolveUDPAddr("udp", string(a))
-		if err != nil {
-			return err
-		}
+func ContactNodeBehindAddr(addrs []*net.UDPAddr, node *Node) error {
+	for _, dest := range addrs {
+
 		log.Printf("Got addr = %s", dest.String())
 		log.Printf("Got addr = %s", dest.Network())
 		var id uint32 = 1000000
@@ -219,7 +210,7 @@ func ContactNodeBehindNat(peer string, node *Node) error {
 			return nil
 		}
 		// Timeout reached
-		log.Printf("cannot contact peer %s", peer)
+		log.Printf("cannot contact addr %s", dest.Network())
 
 		for _, a := range node.BootstrapAddresses {
 			id++
@@ -241,6 +232,25 @@ func ContactNodeBehindNat(peer string, node *Node) error {
 		}
 	}
 	return nil
+}
+
+func ContactNodeBehindNat(peer string, node *Node) error {
+	addr, err := GetPeerAddresses(peer)
+	if err != nil {
+		log.Printf("cannot retrieve peer %s addresses: %s", peer, err.Error())
+		return fmt.Errorf("cannot retrieve peer %s addresses: %s", peer, err.Error())
+	}
+	addrs := make([]*net.UDPAddr, 0)
+	for _, a := range addr {
+		log.Printf("Addr = %s", string(a))
+		dest, err := net.ResolveUDPAddr("udp", string(a))
+		if err != nil {
+			return err
+		}
+		addrs = append(addrs, dest)
+	}
+
+	return ContactNodeBehindAddr(addrs, node)
 }
 
 func RetrieveEntry(hash [32]byte, addr *net.UDPAddr, node *Node) Entry {
@@ -278,6 +288,7 @@ func RetrieveEntry(hash [32]byte, addr *net.UDPAddr, node *Node) Entry {
 
 		packet := waitPacket(id, datum, node, addr, 20*time.Second) // TODO: check if packet is valid
 		if packet == nil {
+			ContactNodeBehindNatAddr(addr, node)
 			return root
 		}
 		if packet[4] == NoDatumType {

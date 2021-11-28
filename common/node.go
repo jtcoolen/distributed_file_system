@@ -253,7 +253,7 @@ func ContactNodeBehindNat(peer string, node *Node) error {
 	return ContactNodeBehindAddr(addrs, node)
 }
 
-func RetrieveEntry(hash [32]byte, addr *net.UDPAddr, node *Node) Entry {
+func RetrieveEntry(hash [32]byte, peer string, addr *net.UDPAddr, node *Node) Entry {
 	root := Entry{Directory, "", hash, nil, nil}
 	var currentEntry *Entry
 
@@ -288,7 +288,7 @@ func RetrieveEntry(hash [32]byte, addr *net.UDPAddr, node *Node) Entry {
 
 		packet := waitPacket(id, datum, node, addr, 20*time.Second) // TODO: check if packet is valid
 		if packet == nil {
-			ContactNodeBehindNatAddr(addr, node)
+			ContactNodeBehindNat(peer, node)
 			return root
 		}
 		if packet[4] == NoDatumType {

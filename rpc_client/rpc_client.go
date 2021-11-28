@@ -38,9 +38,7 @@ func outputEntryToDisk(entry *common.Entry, path string) {
 		for _, c := range entry.Children {
 			switch c.Type {
 			case 1:
-				for _, cc := range c.Children {
-					f.Write(cc.Data)
-				}
+				outputEntryToDisk(c, path)
 			default:
 				f.Write(c.Data)
 			}

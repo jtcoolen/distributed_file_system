@@ -213,7 +213,7 @@ func ContactNodeBehindNat(peer string, node *Node) error {
 		node.PendingPacketQueries[id] = make(chan []byte) // TODO: sendPacket function
 		node.Conn.WriteToUDP(hello, dest)
 
-		p := waitPacket(id, hello, node, dest, 20*time.Second)
+		p := waitPacket(id, hello, node, dest, 10*time.Second)
 		if p != nil {
 			log.Print("NOOPE")
 			return nil
@@ -221,11 +221,11 @@ func ContactNodeBehindNat(peer string, node *Node) error {
 		// Timeout reached
 		log.Printf("cannot contact peer %s", peer)
 
-		for i := 0; i < 3; i++ {
+		for _, a := range node.BootstrapAddresses {
 			id++
 			hello, err = makeNatTraversalRequest(id, *dest, node)
 			if err == nil {
-				node.Conn.WriteToUDP(hello, node.BootstrapAddresses[1])
+				node.Conn.WriteToUDP(hello, a)
 				continue
 			}
 		}
@@ -236,6 +236,7 @@ func ContactNodeBehindNat(peer string, node *Node) error {
 		hello, err = MakeHello(id, node)
 		if err == nil {
 			node.Conn.WriteToUDP(hello, dest)
+			log.Printf("Sent hello to %s", dest)
 			continue
 		}
 	}

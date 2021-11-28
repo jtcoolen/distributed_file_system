@@ -201,6 +201,7 @@ func makeDatum(id uint32, hash [32]byte, node *Node) ([]byte, error) {
 func IPAndPort(ip net.UDPAddr) []byte {
 	addr := make([]byte, 18)
 	copy(addr[:], ip.IP)
+	log.Printf("ADDR = %s ; len=%d", []byte(ip.IP), len(ip.IP))
 	binary.BigEndian.PutUint16(addr[16:], uint16(ip.Port)) // TODO: return error if integer exceeds 2 bytes of capacity
 	return addr
 }

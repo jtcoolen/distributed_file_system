@@ -59,7 +59,7 @@ func main() {
 	}
 
 	addr := net.UDPAddr{
-		Port: 12345,
+		Port: 12355,
 		IP:   net.IP{0, 0, 0, 0}, // listen to all addresses
 	}
 

@@ -213,7 +213,7 @@ func ContactNodeBehindNat(peer string, node *Node) error {
 		node.PendingPacketQueries[id] = make(chan []byte) // TODO: sendPacket function
 		node.Conn.WriteToUDP(hello, dest)
 
-		p := waitPacket(id, hello, node, dest, 1*time.Minute)
+		p := waitPacket(id, hello, node, dest, 20*time.Second)
 		if p != nil {
 			log.Print("NOOPE")
 			return nil

@@ -210,7 +210,7 @@ func IPAndPort(ip net.UDPAddr) []byte {
 func makeNatTraversalRequest(id uint32, addr net.UDPAddr, node *Node) ([]byte, error) {
 	dataLength := 18
 	h := make([]byte, headerLength+dataLength+SignatureLength)
-	binary.BigEndian.PutUint32(h[0:4], id)
+	//	binary.BigEndian.PutUint32(h[0:4], id)
 	h[4] = NatTraversalRequestType
 	binary.BigEndian.PutUint16(h[5:headerLength], uint16(dataLength))
 	copy(h[headerLength:], IPAndPort(addr))

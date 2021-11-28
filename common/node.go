@@ -288,8 +288,9 @@ func RetrieveEntry(hash [32]byte, peer string, addr *net.UDPAddr, node *Node) En
 
 		packet := waitPacket(id, datum, node, addr, 20*time.Second) // TODO: check if packet is valid
 		if packet == nil {
-			ContactNodeBehindNat(peer, node)
-			return root
+			if ContactNodeBehindNat(peer, node) != nil {
+				return root // TODO: return error
+			}
 		}
 		if packet[4] == NoDatumType {
 			log.Print("No Datum!")

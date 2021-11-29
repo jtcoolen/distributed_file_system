@@ -92,6 +92,7 @@ func main() {
 		PendingPacketQueries: make(map[uint32]chan []byte),
 		CachedEntries:        cachedEntries,
 		ExportedDirectory:    &myDir,
+		Id:                   1,
 	}
 	log.Printf("My root hash is %x", common.ComputeHash(node.ExportedDirectory))
 	log.Printf("Empty string hash is %x", sha256.Sum256([]byte("")))

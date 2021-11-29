@@ -22,6 +22,19 @@ type Node struct {
 	PendingPacketQueries map[uint32]chan []byte
 	CachedEntries        *lru.ARCCache
 	ExportedDirectory    *Entry
+	Id                   uint32
+}
+
+func newId(node *Node) uint32 {
+	id := node.Id
+	node.Id++
+	return id
+}
+
+func resolve(id uint32, packet []byte, node *Node) {
+	if node.PendingPacketQueries[id] != nil {
+		node.PendingPacketQueries[id] <- packet // broadcast
+	}
 }
 
 func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
@@ -41,9 +54,6 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 
 	case HelloReplyType:
 		log.Printf("HelloReply from %s with id=%d", addr, binary.BigEndian.Uint32(packet[0:4]))
-		if node.PendingPacketQueries[id] != nil {
-			node.PendingPacketQueries[id] <- packet[:headerLength+int(packetLength)]
-		}
 
 	case PublicKeyType:
 		log.Printf("Public Key from %s", addr)
@@ -83,15 +93,9 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 
 	case DatumType:
 		log.Printf("Datum(%x) from %s with id %d", packet[headerLength:headerLength+int(packetLength)], addr, id)
-		if node.PendingPacketQueries[id] != nil {
-			node.PendingPacketQueries[id] <- packet[:headerLength+int(packetLength)]
-		}
 
 	case NoDatumType:
 		log.Printf("NoDatum(%x) from %s", packet[headerLength:headerLength+int(packetLength)], addr)
-		if node.PendingPacketQueries[id] != nil {
-			node.PendingPacketQueries[id] <- packet[:headerLength+int(packetLength)]
-		}
 
 	case NatTraversalType:
 		log.Printf("NatTraversal from %s", addr)
@@ -103,7 +107,7 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 			break
 		}
 		log.Printf("Port is: %d", port)
-		hello, err := MakeHello(1000006, node)
+		hello, err := MakeHello(newId(node), node)
 		if err == nil {
 			node.Conn.WriteToUDP(hello, dst)
 		}
@@ -114,14 +118,14 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 	default:
 		log.Printf("Packet type=%d from %s", packetType, addr)
 	}
+	resolve(id, packet[:headerLength+int(packetLength)], node)
 }
 
 func SendPeriodicHello(node *Node) {
-	i := 0
 	for {
 		time.Sleep(HelloPeriod)
 		for _, addr := range node.BootstrapAddresses {
-			hello, err := MakeHello(1, node)
+			hello, err := MakeHello(newId(node), node)
 			if err == nil {
 				node.Conn.WriteToUDP(hello, addr)
 				continue
@@ -129,7 +133,6 @@ func SendPeriodicHello(node *Node) {
 			log.Printf("%s", err)
 		}
 		log.Printf("Incoming Messages Table Length = %d", len(node.PendingPacketQueries))
-		i++
 	}
 }
 
@@ -149,33 +152,31 @@ func waitPacket(id uint32, packet []byte, node *Node, addr *net.UDPAddr, timeout
 	limit := time.After(delay)
 	stopAt := time.After(timeout)
 
-	var v chan []byte = node.PendingPacketQueries[id]
+	if node.PendingPacketQueries[id] == nil {
+		node.PendingPacketQueries[id] = make(chan []byte)
+	}
 
-	if v != nil {
-		for {
-			select {
-			case out := <-v:
-				defer delete(node.PendingPacketQueries, id)
-				return out
+	v := node.PendingPacketQueries[id]
 
-			case <-stopAt:
-				log.Printf("STOP!!!")
-				defer delete(node.PendingPacketQueries, id)
-				return nil
+	for {
+		select {
+		case out := <-v:
+			defer delete(node.PendingPacketQueries, id)
+			return out
 
-			case <-limit:
-				log.Printf("OKKKKKKK!!!!!!!!!")
+		case <-stopAt:
+			defer delete(node.PendingPacketQueries, id)
+			return nil
 
-				_, err := node.Conn.WriteToUDP(packet, addr)
-				if err != nil {
-					log.Fatal(err)
-				}
-				delay = delay * delay
-				limit = time.After(delay)
+		case <-limit:
+			_, err := node.Conn.WriteToUDP(packet, addr)
+			if err != nil {
+				log.Fatal(err)
 			}
+			delay = delay * delay
+			limit = time.After(delay)
 		}
 	}
-	return nil
 }
 
 func cache(entry *Entry, node *Node) {
@@ -196,12 +197,12 @@ func ContactNodeBehindAddr(addrs []*net.UDPAddr, node *Node) error {
 
 		log.Printf("Got addr = %s", dest.String())
 		log.Printf("Got addr = %s", dest.Network())
-		var id uint32 = 1000000
+		id := newId(node)
 		hello, err := MakeHello(id, node)
 		if err != nil {
 			return err
 		}
-		node.PendingPacketQueries[id] = make(chan []byte) // TODO: sendPacket function
+
 		node.Conn.WriteToUDP(hello, dest)
 
 		p := waitPacket(id, hello, node, dest, 10*time.Second)
@@ -213,7 +214,7 @@ func ContactNodeBehindAddr(addrs []*net.UDPAddr, node *Node) error {
 		log.Printf("cannot contact addr %s", dest.Network())
 
 		for _, a := range node.BootstrapAddresses {
-			id++
+			id := newId(node)
 			hello, err = makeNatTraversalRequest(id, *dest, node)
 			if err == nil {
 				node.Conn.WriteToUDP(hello, a)
@@ -223,7 +224,7 @@ func ContactNodeBehindAddr(addrs []*net.UDPAddr, node *Node) error {
 		log.Printf("Sent nat traversal request to Juliusz's peer")
 		time.Sleep(1 * time.Second)
 
-		id++
+		id = newId(node)
 		hello, err = MakeHello(id, node)
 		if err == nil {
 			node.Conn.WriteToUDP(hello, dest)
@@ -257,13 +258,11 @@ func RetrieveEntry(hash [32]byte, peer string, addr *net.UDPAddr, node *Node) En
 	root := Entry{Directory, "", hash, nil, nil}
 	var currentEntry *Entry
 
-	var id uint32 = 2 // TODO: global id variable?
 	hashes := make([][32]byte, 0)
 	hashes = append(hashes, hash)
 
 	for len(hashes) != 0 {
-		id++
-
+		id := newId(node)
 		cachedEntry, ok := node.CachedEntries.Get(hashes[0])
 		if ok {
 			log.Printf("Using cached Entry(%x)", hashes[0])
@@ -279,7 +278,6 @@ func RetrieveEntry(hash [32]byte, peer string, addr *net.UDPAddr, node *Node) En
 			log.Fatal(err)
 		}
 
-		node.PendingPacketQueries[id] = make(chan []byte) // TODO: check if there's already a pending query
 		_, err = node.Conn.WriteToUDP(datum, addr)
 		if err != nil {
 			log.Fatal(err)

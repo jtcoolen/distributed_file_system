@@ -34,22 +34,35 @@ func outputEntryToDisk(entry *common.Entry, path string, f *os.File) {
 		}
 
 	case 1:
-
-		defer f.Close()
-		for _, c := range entry.Children {
-			switch c.Type {
-			case 0:
-				fname := fmt.Sprintf("%s/%s", path, entry.Name)
-				f, err := os.OpenFile(fname, os.O_RDWR|os.O_CREATE, 0644)
-				if err != nil {
-					log.Fatal(err)
+		if f == nil {
+			fname := fmt.Sprintf("%s/%s", path, entry.Name)
+			f, err := os.OpenFile(fname, os.O_RDWR|os.O_CREATE, 0644)
+			if err != nil {
+				log.Fatal(err)
+			}
+			defer f.Close()
+			for _, c := range entry.Children {
+				switch c.Type {
+				case 0:
+					outputEntryToDisk(c, fname, f)
+				case 1:
+					outputEntryToDisk(c, fname, nil)
+				default:
+					log.Fatalf("Unexpected type %d", c.Type)
+					//f.Write(c.Data)
 				}
-				outputEntryToDisk(c, fname, f)
-			case 1:
-				outputEntryToDisk(c, path, nil)
-			default:
-				log.Fatalf("Unexpected type %d", c.Type)
-				//f.Write(c.Data)
+			}
+		} else {
+			for _, c := range entry.Children {
+				switch c.Type {
+				case 0:
+					outputEntryToDisk(c, path, f)
+				case 1:
+					outputEntryToDisk(c, path, nil)
+				default:
+					log.Fatalf("Unexpected type %d", c.Type)
+					//f.Write(c.Data)
+				}
 			}
 		}
 

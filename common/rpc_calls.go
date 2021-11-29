@@ -20,6 +20,9 @@ func (t *Node) RetrieveEntry(args *RetrieveEntryArgs, reply *Entry) error {
 	if err != nil {
 		return err
 	}
+	if len(peer) == 0 {
+		return ErrNoAddresses
+	}
 	dest, err := net.ResolveUDPAddr("udp", string(peer[0]))
 	if err != nil {
 		return err
@@ -39,6 +42,9 @@ func (t *Node) RetrieveEntryByPath(args *RetrieveEntryByPathArgs, reply *Entry) 
 	peer, err := GetPeerAddresses(args.Peer)
 	if err != nil {
 		return err
+	}
+	if len(peer) == 0 {
+		return ErrNoAddresses
 	}
 	dest, err := net.ResolveUDPAddr("udp", string(peer[0]))
 	if err != nil {
@@ -66,6 +72,12 @@ func (t *Node) DisplayDirectoryPath(args *RetrieveEntryByPathArgs, reply *string
 		return err
 	}
 	peer, err := GetPeerAddresses(args.Peer)
+	if err != nil {
+		return err
+	}
+	if len(peer) == 0 {
+		return ErrNoAddresses
+	}
 	dest, err := net.ResolveUDPAddr("udp", string(peer[0]))
 	if err != nil {
 		return err

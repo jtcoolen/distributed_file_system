@@ -4,19 +4,11 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"crypto/tls"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"time"
 )
-
-var ErrNotFound = errors.New("not found")
-var ErrNoPublicKey = errors.New("no public key")
-var ErrNoRoot = errors.New("no root")
-var ErrWrongKeySize = errors.New("wrong key size")
-var ErrWrongHashSize = errors.New("wrong hash size")
-var ErrNoSuchType = errors.New("no such type")
 
 var ServerBaseUrl = "https://jch.irif.fr:8082"
 var PeersUrl = fmt.Sprintf("%s/peers", ServerBaseUrl)

@@ -48,6 +48,15 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 	id := binary.BigEndian.Uint32(packet[0:4])
 	packetType := packet[4]
 	packetLength := binary.BigEndian.Uint16(packet[5:headerLength])
+	if int(packetLength) < len(packet)-headerLength {
+		reply, err := makeError(id, "wrong size", node)
+		if err == nil {
+			node.Conn.WriteToUDP(reply, addr)
+			return
+		}
+		log.Printf("%s", err)
+		return
+	}
 
 	switch packetType {
 	case HelloType:
@@ -149,7 +158,9 @@ func ReceiveIncomingMessages(node *Node) {
 		n, remoteAddr, err := 0, new(net.UDPAddr), error(nil)
 		for err == nil {
 			n, remoteAddr, err = node.Conn.ReadFromUDP(buffer)
-			go processIncomingPacket(node, remoteAddr, buffer[:n])
+			if n > headerLength {
+				go processIncomingPacket(node, remoteAddr, buffer[:n])
+			}
 		}
 	}
 }

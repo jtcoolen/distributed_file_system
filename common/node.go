@@ -26,8 +26,15 @@ type Node struct {
 }
 
 func newId(node *Node) uint32 {
-	id := node.Id
-	node.Id++
+	var id uint32
+	if node.Id != 0 {
+		id = node.Id
+		node.Id++
+	} else {
+		id = 1
+		node.Id = 2
+	}
+
 	return id
 }
 

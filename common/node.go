@@ -309,6 +309,10 @@ func RetrieveEntry(hash [32]byte, peer string, addr *net.UDPAddr, node *Node) En
 				return root // TODO: return error
 			}
 		}
+		if len(packet) == 0 {
+			log.Print("Got packet of length 0")
+			return root
+		}
 		if packet[4] == NoDatumType {
 			log.Print("No Datum!")
 		}

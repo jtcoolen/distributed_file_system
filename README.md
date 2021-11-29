@@ -1,7 +1,7 @@
 # Start the node
 ```go run dfs/node```
 
-# Start the RPC client
+# Start the RPC HTTP client
 
 ## List registered peers
 ```go run dfs/rpc_client peers```

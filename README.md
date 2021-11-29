@@ -3,8 +3,12 @@
 
 # Start the RPC client
 
+## List registered peers
+```go run dfs/rpc_client peers```
+
 ## List files
 ```go run dfs/rpc_client ls -path=/ -peer=jch.irif.fr```
+
 ```go run dfs/rpc_client ls -path=/documents -peer=jch.irif.fr```
 
 ## Download files
@@ -17,7 +21,7 @@
 ## High priority
 - [ ] export our own tree (reply back to GetDatum(hash) with a Datum(hash)) (Minoo)
 - [ ] implement a RPC call UpdateDirectory() to update our own directory (add commands mkdir and create to create new directories and files, respectively) (Minoo)
-- [ ] implement NAT Traversal (Minoo & Julien)
+- [x] implement NAT Traversal (Minoo & Julien)
 - [ ] Implement DH key exchange (Julien)
 - [ ] Write report: Usage instructions, Architecture, Features (with logs)
 ## Low priority

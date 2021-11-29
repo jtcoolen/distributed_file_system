@@ -70,13 +70,13 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 		//log.Printf("RootReply from %s", addr)
 
 	case GetDatumType:
-		log.Printf("GetDatum from %s", addr)
+		log.Printf("GetDatum from %s with id %d", addr, id)
 		var h [32]byte
 		copy(h[:], packet[headerLength:headerLength+HashLength])
 		reply, err := makeDatum(id, h, node)
 		if err == nil {
 			node.Conn.WriteToUDP(reply, addr)
-			log.Print("Replied to getDatum")
+			log.Printf("Replied to getDatum with id=%d to address %s", id, addr)
 			break
 		}
 		log.Printf("%s", err)
@@ -145,25 +145,27 @@ func ReceiveIncomingMessages(node *Node) {
 }
 
 func waitPacket(id uint32, packet []byte, node *Node, addr *net.UDPAddr, timeout time.Duration) []byte { // TODO: return error after max retries
-	var delay time.Duration = 200000000
+	var delay time.Duration = 1000000000
 	limit := time.After(delay)
 	stopAt := time.After(timeout)
 
 	var v chan []byte = node.PendingPacketQueries[id]
 
 	if v != nil {
-		defer delete(node.PendingPacketQueries, id)
-
 		for {
 			select {
 			case out := <-v:
+				defer delete(node.PendingPacketQueries, id)
 				return out
 
 			case <-stopAt:
 				log.Printf("STOP!!!")
+				defer delete(node.PendingPacketQueries, id)
 				return nil
 
 			case <-limit:
+				log.Printf("OKKKKKKK!!!!!!!!!")
+
 				_, err := node.Conn.WriteToUDP(packet, addr)
 				if err != nil {
 					log.Fatal(err)
@@ -189,18 +191,9 @@ func cache(entry *Entry, node *Node) {
 	}
 }
 
-func ContactNodeBehindNat(peer string, node *Node) error {
-	addr, err := GetPeerAddresses(peer)
-	if err != nil {
-		log.Printf("cannot retrieve peer %s addresses: %s", peer, err.Error())
-		return fmt.Errorf("cannot retrieve peer %s addresses: %s", peer, err.Error())
-	}
-	for _, a := range addr {
-		log.Printf("Addr = %s", string(a))
-		dest, err := net.ResolveUDPAddr("udp", string(a))
-		if err != nil {
-			return err
-		}
+func ContactNodeBehindAddr(addrs []*net.UDPAddr, node *Node) error {
+	for _, dest := range addrs {
+
 		log.Printf("Got addr = %s", dest.String())
 		log.Printf("Got addr = %s", dest.Network())
 		var id uint32 = 1000000
@@ -211,19 +204,19 @@ func ContactNodeBehindNat(peer string, node *Node) error {
 		node.PendingPacketQueries[id] = make(chan []byte) // TODO: sendPacket function
 		node.Conn.WriteToUDP(hello, dest)
 
-		p := waitPacket(id, hello, node, dest, 1*time.Minute)
+		p := waitPacket(id, hello, node, dest, 10*time.Second)
 		if p != nil {
 			log.Print("NOOPE")
 			return nil
 		}
 		// Timeout reached
-		log.Printf("cannot contact peer %s", peer)
+		log.Printf("cannot contact addr %s", dest.Network())
 
-		for i := 0; i < 3; i++ {
+		for _, a := range node.BootstrapAddresses {
 			id++
 			hello, err = makeNatTraversalRequest(id, *dest, node)
 			if err == nil {
-				node.Conn.WriteToUDP(hello, node.BootstrapAddresses[1])
+				node.Conn.WriteToUDP(hello, a)
 				continue
 			}
 		}
@@ -234,13 +227,33 @@ func ContactNodeBehindNat(peer string, node *Node) error {
 		hello, err = MakeHello(id, node)
 		if err == nil {
 			node.Conn.WriteToUDP(hello, dest)
+			log.Printf("Sent hello to %s", dest)
 			continue
 		}
 	}
 	return nil
 }
 
-func RetrieveEntry(hash [32]byte, addr *net.UDPAddr, node *Node) Entry {
+func ContactNodeBehindNat(peer string, node *Node) error {
+	addr, err := GetPeerAddresses(peer)
+	if err != nil {
+		log.Printf("cannot retrieve peer %s addresses: %s", peer, err.Error())
+		return fmt.Errorf("cannot retrieve peer %s addresses: %s", peer, err.Error())
+	}
+	addrs := make([]*net.UDPAddr, 0)
+	for _, a := range addr {
+		log.Printf("Addr = %s", string(a))
+		dest, err := net.ResolveUDPAddr("udp", string(a))
+		if err != nil {
+			return err
+		}
+		addrs = append(addrs, dest)
+	}
+
+	return ContactNodeBehindAddr(addrs, node)
+}
+
+func RetrieveEntry(hash [32]byte, peer string, addr *net.UDPAddr, node *Node) Entry {
 	root := Entry{Directory, "", hash, nil, nil}
 	var currentEntry *Entry
 
@@ -271,11 +284,16 @@ func RetrieveEntry(hash [32]byte, addr *net.UDPAddr, node *Node) Entry {
 		if err != nil {
 			log.Fatal(err)
 		}
+		log.Printf("Sent getDatum(%x) with id=%d to address %s", hashes[0], id, addr)
 
-		packet := waitPacket(id, datum, node, addr, 5*time.Minute) // TODO: check if packet is valid
+		packet := waitPacket(id, datum, node, addr, 20*time.Second) // TODO: check if packet is valid
+		if packet == nil {
+			if ContactNodeBehindNat(peer, node) != nil {
+				return root // TODO: return error
+			}
+		}
 		if packet[4] == NoDatumType {
 			log.Print("No Datum!")
-			return root
 		}
 
 		currentEntry = findEntry(hashes[0], &root)

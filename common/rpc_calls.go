@@ -24,7 +24,7 @@ func (t *Node) RetrieveEntry(args *RetrieveEntryArgs, reply *Entry) error {
 	if err != nil {
 		return err
 	}
-	*reply = RetrieveEntry(args.Hash, dest, t)
+	*reply = RetrieveEntry(args.Hash, args.Peer, dest, t)
 	if reply.Type == Directory && reply.Name == "" && reply.Children == nil && reply.Data == nil {
 		return ErrNotFound
 	}
@@ -44,7 +44,7 @@ func (t *Node) RetrieveEntryByPath(args *RetrieveEntryByPathArgs, reply *Entry) 
 	if err != nil {
 		return err
 	}
-	rootEntry := RetrieveEntry(rootHash, dest, t)
+	rootEntry := RetrieveEntry(rootHash, args.Peer, dest, t)
 	s := strings.Split(args.Path, "/")
 	if s[0] == "" {
 		s = s[1:]
@@ -70,7 +70,7 @@ func (t *Node) DisplayDirectoryPath(args *RetrieveEntryByPathArgs, reply *string
 	if err != nil {
 		return err
 	}
-	rootEntry := RetrieveEntry(rootHash, dest, t)
+	rootEntry := RetrieveEntry(rootHash, args.Peer, dest, t)
 	s := strings.Split(args.Path, "/")
 	if s[0] == "" {
 		s = s[1:]

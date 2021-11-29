@@ -187,10 +187,10 @@ func makeDatum(id uint32, hash [32]byte, node *Node) ([]byte, error) {
 			copy(h[headerLength+HashLength+1+i*64+32:headerLength+HashLength+1+i*64+64], hc[:])
 		}
 		sign, err := SignECDSA(node.PrivateKey, h[:headerLength+packetLength])
-		log.Print("Message signed")
 		if err != nil {
 			return nil, err
 		}
+		log.Print("Message signed")
 		copy(h[headerLength+packetLength:], sign)
 		return h, nil
 	}
@@ -202,13 +202,15 @@ func IPAndPort(ip net.UDPAddr) []byte {
 	addr := make([]byte, 18)
 	copy(addr[:], ip.IP)
 	binary.BigEndian.PutUint16(addr[16:], uint16(ip.Port)) // TODO: return error if integer exceeds 2 bytes of capacity
+	log.Printf("ADDR = %s ; len=%d", []byte(ip.IP), len(ip.IP))
+	log.Print([]byte(ip.IP), addr)
 	return addr
 }
 
 func makeNatTraversalRequest(id uint32, addr net.UDPAddr, node *Node) ([]byte, error) {
 	dataLength := 18
 	h := make([]byte, headerLength+dataLength+SignatureLength)
-	binary.BigEndian.PutUint32(h[0:4], id)
+	//	binary.BigEndian.PutUint32(h[0:4], id)
 	h[4] = NatTraversalRequestType
 	binary.BigEndian.PutUint16(h[5:headerLength], uint16(dataLength))
 	copy(h[headerLength:], IPAndPort(addr))

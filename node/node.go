@@ -101,7 +101,7 @@ func main() {
 	go common.RpcServer(&node)
 
 	for _, addr := range node.BootstrapAddresses {
-		hello, err := common.MakeHello(1, &node)
+		hello, err := common.MakeHello(common.NewId(&node), &node)
 		if err != nil {
 			log.Fatal(err)
 		}

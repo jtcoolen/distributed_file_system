@@ -25,7 +25,7 @@ type Node struct {
 	Id                   uint32
 }
 
-func newId(node *Node) uint32 {
+func NewId(node *Node) uint32 {
 	var id uint32
 	if node.Id != 0 {
 		id = node.Id
@@ -48,7 +48,8 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 	id := binary.BigEndian.Uint32(packet[0:4])
 	packetType := packet[4]
 	packetLength := binary.BigEndian.Uint16(packet[5:headerLength])
-	if int(packetLength) < len(packet)-headerLength {
+	log.Printf("packetLen=%d , len(packet)= %d , len(packet)-headerLength=%d", packetLength, len(packet), len(packet)-headerLength)
+	/*if int(packetLength) < len(packet)-headerLength {
 		reply, err := makeError(id, "wrong size", node)
 		if err == nil {
 			node.Conn.WriteToUDP(reply, addr)
@@ -56,7 +57,7 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 		}
 		log.Printf("%s", err)
 		return
-	}
+	}*/
 
 	switch packetType {
 	case HelloType:
@@ -123,7 +124,7 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 			break
 		}
 		log.Printf("Port is: %d", port)
-		hello, err := MakeHello(newId(node), node)
+		hello, err := MakeHello(NewId(node), node)
 		if err == nil {
 			node.Conn.WriteToUDP(hello, dst)
 		}
@@ -141,7 +142,7 @@ func SendPeriodicHello(node *Node) {
 	for {
 		time.Sleep(HelloPeriod)
 		for _, addr := range node.BootstrapAddresses {
-			hello, err := MakeHello(newId(node), node)
+			hello, err := MakeHello(NewId(node), node)
 			if err == nil {
 				node.Conn.WriteToUDP(hello, addr)
 				continue
@@ -215,7 +216,7 @@ func ContactNodeBehindAddr(addrs []*net.UDPAddr, node *Node) error {
 
 		log.Printf("Got addr = %s", dest.String())
 		log.Printf("Got addr = %s", dest.Network())
-		id := newId(node)
+		id := NewId(node)
 		hello, err := MakeHello(id, node)
 		if err != nil {
 			return err
@@ -232,7 +233,7 @@ func ContactNodeBehindAddr(addrs []*net.UDPAddr, node *Node) error {
 		log.Printf("cannot contact addr %s", dest.Network())
 
 		for _, a := range node.BootstrapAddresses {
-			id := newId(node)
+			id := NewId(node)
 			hello, err = makeNatTraversalRequest(id, *dest, node)
 			if err == nil {
 				node.Conn.WriteToUDP(hello, a)
@@ -242,7 +243,7 @@ func ContactNodeBehindAddr(addrs []*net.UDPAddr, node *Node) error {
 		log.Printf("Sent nat traversal request to Juliusz's peer")
 		time.Sleep(1 * time.Second)
 
-		id = newId(node)
+		id = NewId(node)
 		hello, err = MakeHello(id, node)
 		if err == nil {
 			node.Conn.WriteToUDP(hello, dest)
@@ -280,7 +281,7 @@ func RetrieveEntry(hash [32]byte, peer string, addr *net.UDPAddr, node *Node) En
 	hashes = append(hashes, hash)
 
 	for len(hashes) != 0 {
-		id := newId(node)
+		id := NewId(node)
 		cachedEntry, ok := node.CachedEntries.Get(hashes[0])
 		if ok {
 			log.Printf("Using cached Entry(%x)", hashes[0])

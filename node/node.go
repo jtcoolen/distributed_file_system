@@ -5,11 +5,12 @@ import (
 	"dfs/common"
 	"log"
 	"net"
+	"os"
 
 	lru "github.com/hashicorp/golang-lru"
 )
 
-const clientName = "hello"
+var clientName = "hello"
 
 const MAX_CACHED_ENTRIES = 10
 
@@ -32,6 +33,10 @@ var myDir = common.Entry{
 }
 
 func main() {
+	if len(os.Args) > 1 {
+		clientName = os.Args[1]
+		log.Printf("clientName: %s\n", clientName)
+	}
 
 	publicKey, privateKey, err := common.GenECDSAKeyPair()
 	if err != nil {
@@ -63,7 +68,7 @@ func main() {
 		IP:   net.IP{0, 0, 0, 0}, // listen to all addresses
 	}
 
-	conn, err := net.ListenUDP("udp", &addr)
+	conn, err := net.ListenUDP("udp", &addr) //TODO Minoo why this step?
 	if err != nil {
 		panic(err)
 	}

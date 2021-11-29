@@ -11,38 +11,43 @@ import (
 	"strings"
 )
 
-func outputEntryToDisk(entry *common.Entry, path string) {
+func outputEntryToDisk(entry *common.Entry, path string, f *os.File) {
 	switch entry.Type {
 	case 0:
-		var n string
-		if entry.Name == "" {
-			n = "nameless"
+		if f != nil {
+			f.Write(entry.Data)
 		} else {
-			n = entry.Name
+			var n string
+			if entry.Name == "" {
+				n = "nameless"
+			} else {
+				n = entry.Name
+			}
+			s := fmt.Sprintf("%s/%s", path, n)
+			f, err := os.OpenFile(s, os.O_RDWR|os.O_CREATE, 0644)
+			if err != nil {
+				e, _ := err.(*os.PathError)
+				log.Fatal(e)
+			}
+			defer f.Close()
 		}
-		s := fmt.Sprintf("%s/%s", path, n)
-		f, err := os.OpenFile(s, os.O_RDWR|os.O_CREATE, 0644)
-		if err != nil {
-			e, _ := err.(*os.PathError)
-			log.Fatal(e)
-		}
-		defer f.Close()
-		f.Write(entry.Data)
 
 	case 1:
-		f, err := os.OpenFile(fmt.Sprintf("%s/%s", path, entry.Name), os.O_RDWR|os.O_CREATE, 0644)
+		fname := fmt.Sprintf("%s/%s", path, entry.Name)
+		f, err := os.OpenFile(fname, os.O_RDWR|os.O_CREATE, 0644)
 		if err != nil {
 			log.Fatal(err)
 		}
 		defer f.Close()
 		for _, c := range entry.Children {
 			switch c.Type {
+			case 0:
+				outputEntryToDisk(c, fname, f)
 			case 1:
-				for _, cc := range c.Children {
-					f.Write(cc.Data)
-				}
+				outputEntryToDisk(c, fname, nil)
 			default:
-				f.Write(c.Data)
+				log.Fatalf("Unexpected type %d", c.Type)
+				//f.Write(c.Data)
 			}
 		}
 
@@ -60,7 +65,7 @@ func outputEntryToDisk(entry *common.Entry, path string) {
 			log.Fatal(err)
 		}
 		for _, c := range entry.Children {
-			outputEntryToDisk(c, fmt.Sprintf("%s/%s", path, n))
+			outputEntryToDisk(c, fmt.Sprintf("%s/%s", path, n), nil)
 		}
 	}
 }
@@ -127,7 +132,7 @@ func main() {
 			log.Fatal(err)
 		}
 
-		outputEntryToDisk(reply, dir)
+		outputEntryToDisk(reply, dir, nil)
 
 	case "downloadFromPath":
 		DownloadFromPathCmd.Parse(os.Args[2:])
@@ -152,7 +157,7 @@ func main() {
 
 		log.Print(reply.Hash)
 		//common.DisplayDirectory(reply, 0)
-		outputEntryToDisk(reply, dir)
+		outputEntryToDisk(reply, dir, nil)
 
 	case "ls":
 		PrintDirCmd.Parse(os.Args[2:])

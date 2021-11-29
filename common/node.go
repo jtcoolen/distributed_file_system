@@ -117,9 +117,9 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 		log.Printf("NatTraversal from %s", addr)
 		var ip net.IP = packet[headerLength : headerLength+16]
 		port := binary.BigEndian.Uint16(packet[headerLength+16 : headerLength+16+2])
-		dst, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", ip, port))
+		dst, err := net.ResolveUDPAddr("udp", fmt.Sprintf("[%s]:%d", ip, port))
 		if err != nil {
-			log.Printf("OOOPSS cannot resolve %s: %s", fmt.Sprintf("%s:%d", ip, port), err.Error())
+			log.Printf("OOOPSS cannot resolve %s: %s", fmt.Sprintf("[%s]:%d", ip, port), err.Error())
 			break
 		}
 		log.Printf("Port is: %d", port)

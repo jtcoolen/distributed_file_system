@@ -30,21 +30,23 @@ func outputEntryToDisk(entry *common.Entry, path string, f *os.File) {
 				log.Fatal(e)
 			}
 			defer f.Close()
+			f.Write(entry.Data)
 		}
 
 	case 1:
-		fname := fmt.Sprintf("%s/%s", path, entry.Name)
-		f, err := os.OpenFile(fname, os.O_RDWR|os.O_CREATE, 0644)
-		if err != nil {
-			log.Fatal(err)
-		}
+
 		defer f.Close()
 		for _, c := range entry.Children {
 			switch c.Type {
 			case 0:
+				fname := fmt.Sprintf("%s/%s", path, entry.Name)
+				f, err := os.OpenFile(fname, os.O_RDWR|os.O_CREATE, 0644)
+				if err != nil {
+					log.Fatal(err)
+				}
 				outputEntryToDisk(c, fname, f)
 			case 1:
-				outputEntryToDisk(c, fname, nil)
+				outputEntryToDisk(c, path, nil)
 			default:
 				log.Fatalf("Unexpected type %d", c.Type)
 				//f.Write(c.Data)

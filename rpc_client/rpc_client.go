@@ -46,7 +46,7 @@ func outputEntryToDisk(entry *common.Entry, path string, f *os.File) {
 				case 0:
 					outputEntryToDisk(c, fname, f)
 				case 1:
-					outputEntryToDisk(c, fname, nil)
+					outputEntryToDisk(c, fname, f)
 				default:
 					log.Fatalf("Unexpected type %d", c.Type)
 					//f.Write(c.Data)

@@ -1,6 +1,7 @@
 package common
 
 import (
+	"fmt"
 	"net"
 	"strings"
 )
@@ -100,4 +101,14 @@ func (t *Node) DisplayDirectoryPath(args *RetrieveEntryByPathArgs, reply *string
 
 func (t *Node) ContactNode(peer string, reply *string) error {
 	return ContactNodeBehindNat(peer, t)
+}
+
+func (t *Node) GetPeerRootHash(peer string, reply *string) error {
+	hash, err := GetPeerRoot(peer)
+	if err != nil {
+		return err
+	}
+
+	*reply = fmt.Sprintf("%x", hash)
+	return nil
 }

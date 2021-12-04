@@ -97,6 +97,8 @@ func main() {
 	peer1 := PrintDirCmd.String("peer", "", "peer")
 	ContactNodeCmd := flag.NewFlagSet("contactNode", flag.ExitOnError)
 	peer2 := ContactNodeCmd.String("peer", "", "peer")
+	GetPeerRootCmd := flag.NewFlagSet("getPeerRoot", flag.ExitOnError)
+	peer3 := GetPeerRootCmd.String("peer", "", "peer")
 
 	//GetPeersCmd := flag.NewFlagSet("peers", flag.ExitOnError)
 
@@ -197,6 +199,21 @@ func main() {
 		for i, p := range peers {
 			fmt.Printf("%d: %s\n", i, string(p))
 		}
+
+	case "getPeerRoot":
+		GetPeerRootCmd.Parse(os.Args[2:])
+		reply := new(string)
+
+		client, err := rpc.DialHTTP("tcp", "localhost:9000")
+		if err != nil {
+			log.Fatal("dialing:", err)
+		}
+		err = client.Call("Node.GetPeerRootHash", *peer3, &reply)
+		if err != nil {
+			log.Fatal("Node.GetPeerRootHash error:", err)
+		}
+
+		fmt.Println(*reply)
 
 	default:
 		fmt.Println("expected 'download' or 'peers' subcommands")

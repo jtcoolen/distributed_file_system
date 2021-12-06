@@ -252,3 +252,18 @@ func makeError(id uint32, errorMessage string, node *Node) ([]byte, error) {
 	copy(h[headerLength+packetLength:], sign)
 	return h, nil
 }
+
+func makeDHKeyRequest(id uint32, formattedPublicKey [2 * 65]byte, node *Node) ([]byte, error) {
+	packetLength := 2 * 65
+	h := make([]byte, headerLength+packetLength+SignatureLength)
+	binary.BigEndian.PutUint32(h[0:4], id)
+	h[4] = DHKeyRequest
+	binary.BigEndian.PutUint16(h[5:headerLength], uint16(packetLength))
+	copy(h[headerLength:], formattedPublicKey[:])
+	sign, err := SignECDSA(node.PrivateKey, h[:headerLength+packetLength])
+	if err != nil {
+		return nil, err
+	}
+	copy(h[headerLength+packetLength:], sign)
+	return h, nil
+}

@@ -23,6 +23,8 @@ type Node struct {
 	CachedEntries        *lru.ARCCache
 	ExportedDirectory    *Entry
 	Id                   uint32
+	// Maps a peer's name with an ECDH session key:
+	SessionKeys map[string][32]byte
 }
 
 func NewId(node *Node) uint32 {

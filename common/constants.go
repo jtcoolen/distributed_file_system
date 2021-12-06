@@ -31,5 +31,7 @@ const NatTraversalType byte = 134
 
 const ErrorType byte = 254
 
-const DHKeyRequest = 64 + 4
-const DHKey = 192 + 4
+const DHKeyRequestType = 64 + 4
+const DHKeyType = 192 + 4
+
+const EncryptedPacketType = 64 + 5

@@ -1,7 +1,10 @@
 package common
 
 import (
+	"crypto/rand"
 	"encoding/binary"
+	"fmt"
+	"io"
 	"log"
 	"net"
 )
@@ -257,7 +260,7 @@ func makeDHKeyRequest(id uint32, node *Node) ([]byte, error) {
 	packetLength := 0
 	h := make([]byte, headerLength+packetLength+SignatureLength)
 	binary.BigEndian.PutUint32(h[0:4], id)
-	h[4] = DHKeyRequest
+	h[4] = DHKeyRequestType
 	binary.BigEndian.PutUint16(h[5:headerLength], uint16(packetLength))
 	sign, err := SignECDSA(node.PrivateKey, h[:headerLength+packetLength])
 	if err != nil {
@@ -271,7 +274,7 @@ func makeDHKey(id uint32, formattedPublicKey [2 * 65]byte, node *Node) ([]byte, 
 	packetLength := 2 * 65
 	h := make([]byte, headerLength+packetLength+SignatureLength)
 	binary.BigEndian.PutUint32(h[0:4], id)
-	h[4] = DHKey
+	h[4] = DHKeyType
 	binary.BigEndian.PutUint16(h[5:headerLength], uint16(packetLength))
 	copy(h[headerLength:], formattedPublicKey[:])
 	sign, err := SignECDSA(node.PrivateKey, h[:headerLength+packetLength])
@@ -280,4 +283,41 @@ func makeDHKey(id uint32, formattedPublicKey [2 * 65]byte, node *Node) ([]byte, 
 	}
 	copy(h[headerLength+packetLength:], sign)
 	return h, nil
+}
+
+func makePacket(packet []byte, peer string, node *Node, sign bool, encrypt bool) ([]byte, error) {
+	if encrypt && !sign {
+		return nil, ErrMakePacket
+	}
+	if k, found := node.SessionKeys[peer]; found {
+		fmt.Println(k)
+		p := packet[headerLength : len(packet)-SignatureLength]
+		h := make([]byte, len(p)+1)
+		h[0] = packet[4]
+		copy(h, p)
+		nonce := make([]byte, 12)
+		if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+			panic(err.Error())
+		}
+		var sig [32]byte
+		copy(sig[:], packet[len(packet)-SignatureLength:])
+		ciphertext := AES_256_GCM_encrypt(h, nonce, sig, k)
+
+		encryptedPacketLength := len(ciphertext) + len(nonce)
+
+		encryptedPacket := make([]byte, headerLength+encryptedPacketLength+SignatureLength)
+		copy(encryptedPacket[:headerLength], packet[:headerLength])
+
+		// update packet type & length
+		encryptedPacket[4] = EncryptedPacketType
+		binary.BigEndian.PutUint16(encryptedPacket[5:headerLength], uint16(encryptedPacketLength))
+
+		// append signature of plaintext at the end
+		copy(encryptedPacket[len(encryptedPacket)-SignatureLength:], packet[len(packet)-SignatureLength:])
+
+		return encryptedPacket, nil
+	}
+
+	return packet, nil
+
 }

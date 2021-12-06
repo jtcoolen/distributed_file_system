@@ -315,6 +315,9 @@ func makePacket(packet []byte, peer string, node *Node, sign bool, encrypt bool)
 		// append signature of plaintext at the end
 		copy(encryptedPacket[len(encryptedPacket)-SignatureLength:], packet[len(packet)-SignatureLength:])
 
+		// append nonce before signature
+		copy(encryptedPacket[len(encryptedPacket)-len(nonce)-SignatureLength:len(encryptedPacket)-SignatureLength], nonce)
+
 		return encryptedPacket, nil
 	}
 

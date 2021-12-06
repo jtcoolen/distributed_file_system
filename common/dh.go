@@ -40,6 +40,9 @@ func GetFormattedECDHPublicKey(publicKeyX *big.Int, publicKeyY *big.Int) [2 * 65
 	return formatted
 }
 
-func GenSessionKey(publicKeyX *big.Int, publicKeyY *big.Int, privateKey []byte) (*big.Int, *big.Int) {
-	return elliptic.P521().ScalarMult(publicKeyX, publicKeyY, privateKey)
+func GenSessionKey(publicKey [2 * 65]byte, privateKey []byte) (*big.Int, *big.Int) {
+	var x, y big.Int
+	x.SetBytes(publicKey[:65])
+	y.SetBytes(publicKey[65:])
+	return elliptic.P521().ScalarMult(&x, &y, privateKey)
 }

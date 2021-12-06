@@ -5,7 +5,7 @@ import (
 	"crypto/cipher"
 )
 
-func AES_GCM_256_encrypt(plaintext []byte, nonce []byte, signature [32]byte, key [32]byte) []byte {
+func AES_256_GCM_encrypt(plaintext []byte, nonce []byte, signature [32]byte, key [32]byte) []byte {
 	block, err := aes.NewCipher(key[:])
 	if err != nil {
 		panic(err.Error())
@@ -19,7 +19,7 @@ func AES_GCM_256_encrypt(plaintext []byte, nonce []byte, signature [32]byte, key
 	return aesgcm.Seal(nil, nonce, plaintext, signature[:])
 }
 
-func AES_GCM_256_decrypt(ciphertext []byte, nonce []byte, signature [32]byte, key [32]byte) ([]byte, error) {
+func AES_256_GCM_decrypt(ciphertext []byte, nonce []byte, signature [32]byte, key [32]byte) ([]byte, error) {
 	block, err := aes.NewCipher(key[:])
 	if err != nil {
 		panic(err.Error())

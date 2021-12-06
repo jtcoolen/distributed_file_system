@@ -30,3 +30,6 @@ const NatTraversalRequestType byte = 133
 const NatTraversalType byte = 134
 
 const ErrorType byte = 254
+
+const DHRequest = 64 + 4
+const DHKey = 192 + 4

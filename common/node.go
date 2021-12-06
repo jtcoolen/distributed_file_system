@@ -190,7 +190,8 @@ func waitPacket(id uint32, packet []byte, node *Node, addr *net.UDPAddr, timeout
 		case <-limit:
 			_, err := node.Conn.WriteToUDP(packet, addr)
 			if err != nil {
-				log.Fatal(err)
+				log.Print(err)
+				return nil
 			}
 			delay = delay * delay
 			limit = time.After(delay)
@@ -294,12 +295,14 @@ func RetrieveEntry(hash [32]byte, peer string, addr *net.UDPAddr, node *Node) En
 
 		datum, err := makeGetDatum(id, hashes[0], node)
 		if err != nil {
-			log.Fatal(err)
+			log.Print(err)
+			return root
 		}
 
 		_, err = node.Conn.WriteToUDP(datum, addr)
 		if err != nil {
-			log.Fatal(err)
+			log.Print(err)
+			return root
 		}
 		log.Printf("Sent getDatum(%x) with id=%d to address %s", hashes[0], id, addr)
 

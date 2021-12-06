@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"time"
 )
@@ -75,6 +76,7 @@ func GetPeers() ([][]byte, error) {
 }
 
 func GetPeerAddresses(peer string) ([][]byte, error) {
+	log.Printf("eerAddressesUrl(peer)=%s", PeerAddressesUrl(peer))
 	body, r, err := GetHttpRequestResponseBody("GET", PeerAddressesUrl(peer))
 	if err != nil {
 		return nil, err

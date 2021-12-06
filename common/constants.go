@@ -10,6 +10,7 @@ const Juliusz = "jch.irif.fr"
 const HashLength = sha256.Size
 const PublicKeyLength = 64
 const SignatureLength = 64
+const nonceLength = 12
 
 const HelloPeriod time.Duration = 30 * time.Second
 

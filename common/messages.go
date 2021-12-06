@@ -322,5 +322,19 @@ func makePacket(packet []byte, peer string, node *Node, sign bool, encrypt bool)
 	}
 
 	return packet, nil
+}
 
+func decryptAndAuthenticatePacket(packet []byte, peer string) []byte {
+	if packet[4] != EncryptedPacketType {
+		return packet
+	}
+	if k, found := node.SessionKeys[peer]; found {
+		body := packet[headerLength : len(packet)-nonceLength-SignatureLength]
+		nonce := packet[len(packet)-nonceLength-SignatureLength : len(packet)-SignatureLength]
+		signature := packet[len(packet)-SignatureLength : len(packet)]
+		var sig [32]byte
+		copy(sig[:], signature)
+		AES_256_GCM_decrypt(body, nonce, sig, k)
+	}
+	return nil // TODO: that's actually an error
 }

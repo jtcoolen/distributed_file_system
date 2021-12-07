@@ -4,6 +4,7 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/sha256"
+	"log"
 	"math/big"
 )
 
@@ -49,6 +50,7 @@ func GenSessionKey(publicKey [2 * 66]byte, privateKey []byte) ([sha256.Size]byte
 	y.SetBytes(publicKey[66:])
 
 	if !elliptic.P521().IsOnCurve(&x, &y) {
+		log.Printf("POINT NOT ON CURVE")
 		return sha256.Sum256(formatted[:]), ErrPubKeyOutOfCurve
 	}
 
@@ -56,6 +58,8 @@ func GenSessionKey(publicKey [2 * 66]byte, privateKey []byte) ([sha256.Size]byte
 
 	mx.FillBytes(formatted[:66])
 	my.FillBytes(formatted[66:])
+
+	log.Print("GOOD POINT")
 
 	return sha256.Sum256(formatted[:]), nil
 }

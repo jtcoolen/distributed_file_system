@@ -232,6 +232,7 @@ func SendPeriodicHello(node *Node) {
 	for {
 		for i, s := range node.SessionKeys {
 			log.Printf("SessionKey(%s)=%x", i, s.sessionKey)
+			log.Printf("privk=%x, pubk=(%d, %d)", s.keyPair.PrivateKey, s.keyPair.PublicKeyX, s.keyPair.PublicKeyY)
 		}
 		time.Sleep(HelloPeriod)
 		for _, addr := range node.BootstrapAddresses {

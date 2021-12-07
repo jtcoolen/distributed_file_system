@@ -202,7 +202,7 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 
 	case DHKeyType:
 		log.Printf("DHKey from %s", addr)
-		var formattedPublicKey [2 * 86]byte
+		var formattedPublicKey [2 * 65]byte
 		copy(formattedPublicKey[:], packet[headerLength:])
 		RefreshRegisteredPeers(node)
 		peer, err := FindPeerFromAddr(addr, node)

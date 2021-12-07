@@ -34,19 +34,19 @@ func GenKeyPair() (*ECDHKeyPair, error) {
 	return &ECDHKeyPair{PrivateKey: privateKey, PublicKeyX: pkX, PublicKeyY: pkY}, nil
 }
 
-func GetFormattedECDHKey(publicKeyX *big.Int, publicKeyY *big.Int) [2 * 86]byte {
-	formatted := [2 * 86]byte{}
-	publicKeyX.FillBytes(formatted[:86])
-	publicKeyY.FillBytes(formatted[86:])
+func GetFormattedECDHKey(publicKeyX *big.Int, publicKeyY *big.Int) [2 * 65]byte {
+	formatted := [2 * 65]byte{}
+	publicKeyX.FillBytes(formatted[:65])
+	publicKeyY.FillBytes(formatted[65:])
 	return formatted
 }
 
-func GenSessionKey(publicKey [2 * 86]byte, privateKey []byte) ([sha256.Size]byte, error) {
+func GenSessionKey(publicKey [2 * 65]byte, privateKey []byte) ([sha256.Size]byte, error) {
 	var x, y big.Int
-	formatted := [2 * 86]byte{}
+	formatted := [2 * 65]byte{}
 
-	x.SetBytes(publicKey[:86])
-	y.SetBytes(publicKey[86:])
+	x.SetBytes(publicKey[:65])
+	y.SetBytes(publicKey[65:])
 
 	if !elliptic.P521().IsOnCurve(&x, &y) {
 		return sha256.Sum256(formatted[:]), ErrPubKeyOutOfCurve
@@ -54,8 +54,8 @@ func GenSessionKey(publicKey [2 * 86]byte, privateKey []byte) ([sha256.Size]byte
 
 	mx, my := elliptic.P521().ScalarMult(&x, &y, privateKey)
 
-	mx.FillBytes(formatted[:86])
-	my.FillBytes(formatted[86:])
+	mx.FillBytes(formatted[:65])
+	my.FillBytes(formatted[65:])
 
 	return sha256.Sum256(formatted[:]), nil
 }

@@ -298,7 +298,7 @@ func makePacket(packet []byte, addr *net.UDPAddr, node *Node) ([]byte, error) {
 		p := packet[headerLength : len(packet)-SignatureLength]
 		h := make([]byte, len(p)+1)
 		h[0] = packet[4]
-		copy(h, p)
+		copy(h[1:], p)
 		nonce := make([]byte, 12)
 		if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
 			log.Print(err)

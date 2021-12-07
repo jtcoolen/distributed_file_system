@@ -212,6 +212,7 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 			return
 		}
 		if k, found := node.SessionKeys[peer]; found {
+			log.Print("OK")
 			key, err := GenSessionKey(formattedPublicKey, k.keyPair.PrivateKey)
 			if err != nil {
 				log.Printf("Error GenKey !!!!!! %s", err)
@@ -220,7 +221,6 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 			k.sessionKey = key
 			k.ready = true
 		}
-		log.Print("OK")
 
 	default:
 		log.Printf("Packet type=%d from %s", packetType, addr)

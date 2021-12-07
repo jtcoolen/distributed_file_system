@@ -89,16 +89,23 @@ func main() {
 	DownloadCmd := flag.NewFlagSet("download", flag.ExitOnError)
 	hash_str := DownloadCmd.String("hash", "", "hash")
 	peerDownload := DownloadCmd.String("peer", "", "peer")
+
 	DownloadFromPathCmd := flag.NewFlagSet("downloadFromPath", flag.ExitOnError)
 	path := DownloadFromPathCmd.String("path", "", "path")
 	peer := DownloadFromPathCmd.String("peer", "", "peer")
+
 	PrintDirCmd := flag.NewFlagSet("ls", flag.ExitOnError)
 	path1 := PrintDirCmd.String("path", "", "path")
 	peer1 := PrintDirCmd.String("peer", "", "peer")
+
 	ContactNodeCmd := flag.NewFlagSet("contactNode", flag.ExitOnError)
 	peer2 := ContactNodeCmd.String("peer", "", "peer")
+
 	GetPeerRootCmd := flag.NewFlagSet("getPeerRoot", flag.ExitOnError)
 	peer3 := GetPeerRootCmd.String("peer", "", "peer")
+
+	SendDHKeyRequest := flag.NewFlagSet("sendDHKeyRequest", flag.ExitOnError)
+	peerSendDHKeyRequest := GetPeerRootCmd.String("peer", "", "peer")
 
 	//GetPeersCmd := flag.NewFlagSet("peers", flag.ExitOnError)
 
@@ -214,6 +221,16 @@ func main() {
 		}
 
 		fmt.Println(*reply)
+
+	case "sendDHKeyRequest":
+		client, err := rpc.DialHTTP("tcp", "localhost:9000")
+		if err != nil {
+			log.Fatal("dialing:", err)
+		}
+		err = client.Call("Node.SendDHKeyRequest", peerSendDHKeyRequest, nil)
+		if err != nil {
+			log.Fatal("Node.SendDHKeyRequest error:", err)
+		}
 
 	default:
 		fmt.Println("expected 'download' or 'peers' subcommands")

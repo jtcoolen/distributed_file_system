@@ -112,3 +112,23 @@ func (t *Node) GetPeerRootHash(peer string, reply *string) error {
 	*reply = fmt.Sprintf("%x", hash)
 	return nil
 }
+
+func (t *Node) SendDHKeyRequest(peer string) error {
+	dhRequest, err := makeDHKeyRequest(NewId(t), t)
+	addrs, err := GetPeerAddresses(peer)
+	if err != nil {
+		return err
+	}
+	if len(addrs) == 0 {
+		return ErrNoAddresses
+	}
+	dest, err := net.ResolveUDPAddr("udp", string(addrs[0]))
+	if err != nil {
+		return err
+	}
+	if err == nil {
+		t.Conn.WriteToUDP(dhRequest, dest)
+	}
+
+	return nil
+}

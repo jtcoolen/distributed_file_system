@@ -116,7 +116,11 @@ func (t *Node) GetPeerRootHash(peer string, reply *string) error {
 
 func (t *Node) SendDHKeyRequest(peer string, reply *string) error {
 	log.Print("HEY THERE")
-	dhRequest, _ := makeDHKeyRequest(NewId(t), t)
+	dhRequest, err := makeDHKeyRequest(NewId(t), t)
+	if err != nil {
+		log.Printf("NOOOO")
+		log.Print(err)
+	}
 	addrs, err := GetPeerAddresses(peer)
 	if err != nil {
 		return err
@@ -133,8 +137,6 @@ func (t *Node) SendDHKeyRequest(peer string, reply *string) error {
 	}
 
 	t.Conn.WriteToUDP(dhRequest, dest)
-	hello, _ := MakeHello(NewId(t), t)
-	t.Conn.WriteToUDP(hello, dest)
 
 	return nil
 }

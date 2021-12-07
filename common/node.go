@@ -94,7 +94,7 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 	packetType := packet[4]
 	packetLength := binary.BigEndian.Uint16(packet[5:headerLength])
 	log.Printf("packetLen=%d , len(packet)= %d , len(packet)-headerLength=%d", packetLength, len(packet), len(packet)-headerLength)
-
+	log.Printf("packet type=%d", packetType)
 	// TODO: check packet size (prevent buffer overflows from occurring)
 	/*if int(packetLength) < len(packet)-headerLength {
 		reply, err := makeError(id, "wrong size", node)

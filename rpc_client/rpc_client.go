@@ -104,8 +104,8 @@ func main() {
 	GetPeerRootCmd := flag.NewFlagSet("getPeerRoot", flag.ExitOnError)
 	peer3 := GetPeerRootCmd.String("peer", "", "peer")
 
-	SendDHKeyRequest := flag.NewFlagSet("sendDHKeyRequest", flag.ExitOnError)
-	peerSendDHKeyRequest := GetPeerRootCmd.String("peer", "", "peer")
+	SendDHKeyRequestCmd := flag.NewFlagSet("sendDHKeyRequest", flag.ExitOnError)
+	peerSendDHKeyRequest := SendDHKeyRequestCmd.String("peer", "", "peer")
 
 	//GetPeersCmd := flag.NewFlagSet("peers", flag.ExitOnError)
 
@@ -223,7 +223,7 @@ func main() {
 		fmt.Println(*reply)
 
 	case "sendDHKeyRequest":
-		SendDHKeyRequest.Parse(os.Args[2:])
+		SendDHKeyRequestCmd.Parse(os.Args[2:])
 		client, err := rpc.DialHTTP("tcp", "localhost:9000")
 		if err != nil {
 			log.Fatal("dialing:", err)

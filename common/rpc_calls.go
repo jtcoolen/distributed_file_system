@@ -114,7 +114,7 @@ func (t *Node) GetPeerRootHash(peer string, reply *string) error {
 }
 
 func (t *Node) SendDHKeyRequest(peer string) error {
-	dhRequest, err := makeDHKeyRequest(NewId(t), t)
+	dhRequest, _ := makeDHKeyRequest(NewId(t), t)
 	addrs, err := GetPeerAddresses(peer)
 	if err != nil {
 		return err

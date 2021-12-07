@@ -270,8 +270,8 @@ func makeDHKeyRequest(id uint32, node *Node) ([]byte, error) {
 	return h, nil
 }
 
-func MakeDHKey(id uint32, formattedPublicKey [2 * 65]byte, node *Node) ([]byte, error) {
-	packetLength := 2 * 65
+func MakeDHKey(id uint32, formattedPublicKey [2 * 66]byte, node *Node) ([]byte, error) {
+	packetLength := 2 * 66
 	h := make([]byte, headerLength+packetLength+SignatureLength)
 	binary.BigEndian.PutUint32(h[0:4], id)
 	h[4] = DHKeyType

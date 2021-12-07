@@ -62,8 +62,10 @@ func RefreshRegisteredPeers(node *Node) {
 func FindPeerFromAddr(addr *net.UDPAddr, node *Node) (string, error) {
 	for peer, peerAddrs := range node.RegisteredPeers {
 		for _, pAddr := range peerAddrs {
-			if addr.IP.Equal(pAddr.IP) && addr.Port == pAddr.Port {
-				return peer, nil
+			if pAddr != nil {
+				if addr.IP.Equal(pAddr.IP) && addr.Port == pAddr.Port {
+					return peer, nil
+				}
 			}
 		}
 	}

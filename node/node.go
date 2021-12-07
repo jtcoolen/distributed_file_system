@@ -67,6 +67,7 @@ func main() {
 	addr := net.UDPAddr{
 		Port: port,
 		IP:   net.IP{0, 0, 0, 0}, // listen to all addresses
+		Zone: "::",
 	}
 
 	conn, err := net.ListenUDP("udp", &addr) //TODO Minoo why this step?

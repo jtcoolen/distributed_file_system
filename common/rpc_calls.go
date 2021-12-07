@@ -116,7 +116,8 @@ func (t *Node) GetPeerRootHash(peer string, reply *string) error {
 
 func (t *Node) SendDHKeyRequest(peer string, reply *string) error {
 	log.Print("HEY THERE")
-	dhRequest, err := makeDHKeyRequest(NewId(t), t)
+	id := NewId(t)
+	dhRequest, err := makeDHKeyRequest(id, t)
 	if err != nil {
 		log.Printf("NOOOO")
 		log.Print(err)
@@ -136,7 +137,17 @@ func (t *Node) SendDHKeyRequest(peer string, reply *string) error {
 		return err
 	}
 
-	t.Conn.WriteToUDP(dhRequest, dest)
+	waitPacket(id, dhRequest, t, dest, 20)
 
+	if k, found := t.SessionKeys[peer]; found {
+		id = NewId(t)
+		dhkey, err := MakeDHKey(id, GetFormattedECDHKey(k.keyPair.PublicKeyX, k.keyPair.PublicKeyY), t)
+		if err != nil {
+			return nil
+		}
+		waitPacket(id, dhkey, t, dest, 20)
+	}
+
+	// Something bad happened
 	return nil
 }

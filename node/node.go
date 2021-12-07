@@ -95,6 +95,7 @@ func main() {
 		ExportedDirectory:    &myDir,
 		Id:                   1,
 		SessionKeys:          make(map[string]common.SessionKey),
+		RegisteredPeers:      make(map[string][]*net.UDPAddr),
 	}
 
 	log.Printf("My root hash is %x", common.ComputeHash(node.ExportedDirectory))

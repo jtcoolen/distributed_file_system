@@ -11,8 +11,6 @@ import (
 	lru "github.com/hashicorp/golang-lru"
 )
 
-var clientName = "hello"
-
 const MAX_CACHED_ENTRIES = 100
 
 const history = "The movement of humanity, arising as it does from innumerable arbitrary human wills, is continuous. To understand the laws of this continuous movement is the aim of history. But to arrive at these laws, resulting from the sum of all those human wills, man's mind postulates arbitrary and disconnected units. The first method of history is to take an arbitrarily selected series of continuous events and examine it apart from others, though there is and can be no beginning to any event, for one event always flows uninterruptedly from another.\nThe second method is to consider the actions of some one man- a king or a commander- as equivalent to the sum of many individual wills; whereas the sum of individual wills is never expressed by the activity of a single historic personage.\nHistorical science in its endeavor to draw nearer to truth continually takes smaller and smaller units for examination. But however small the units it takes, we feel that to take any unit disconnected from others, or to assume a beginning of any phenomenon, or to say that the will of many men is expressed by the actions of any one historic personage, is in itself false.\nIt needs no critical exertion to reduce utterly to dust any deductions drawn from history. It is merely necessary to select some larger or smaller unit as the subject of observation- as criticism has every right to do, seeing that whatever unit history observes must always be arbitrarily selected. Only by taking infinitesimally small units for observation (the differential of history, that is, the individual tendencies of men) and attaining to the art of integrating them (that is, finding the sum of these infinitesimals) can we hope to arrive at the laws of history."
@@ -37,7 +35,7 @@ func main() {
 	var port int
 	flag.IntVar(&port, "p", 12345, "Port number")
 	var peerName string
-	flag.StringVar(&clientName, "n", "test", "Peer name")
+	flag.StringVar(&peerName, "n", "test", "Peer name")
 
 	flag.Parse() // after declaring flags we need to call it
 

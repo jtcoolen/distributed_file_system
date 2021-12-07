@@ -5,6 +5,7 @@ import (
 	"log"
 	"net"
 	"strings"
+	"time"
 )
 
 type RetrieveEntryArgs struct {
@@ -137,15 +138,16 @@ func (t *Node) SendDHKeyRequest(peer string, reply *string) error {
 		return err
 	}
 
-	waitPacket(id, dhRequest, t, dest, 20)
+	waitPacket(id, dhRequest, t, dest, 10*time.Second)
 
 	if k, found := t.SessionKeys[peer]; found {
+		log.Print("OK")
 		id = NewId(t)
 		dhkey, err := MakeDHKey(id, GetFormattedECDHKey(k.keyPair.PublicKeyX, k.keyPair.PublicKeyY), t)
 		if err != nil {
 			return nil
 		}
-		waitPacket(id, dhkey, t, dest, 20)
+		waitPacket(id, dhkey, t, dest, 10*time.Second)
 	}
 
 	// Something bad happened

@@ -221,7 +221,7 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 				break
 			}
 			log.Printf("SessionKey=%x", key)
-			copy(k.sessionKey[:], key[:])
+			k.sessionKey = key
 			k.ready = true
 		}
 

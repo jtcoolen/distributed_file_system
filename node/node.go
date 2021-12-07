@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"sync"
 
 	lru "github.com/hashicorp/golang-lru"
 )
@@ -93,6 +94,7 @@ func main() {
 		CachedEntries:        cachedEntries,
 		ExportedDirectory:    &myDir,
 		Id:                   1,
+		SessionKeys:          make(map[string]common.SessionKey),
 	}
 	log.Printf("My root hash is %x", common.ComputeHash(node.ExportedDirectory))
 	log.Printf("Empty string hash is %x", sha256.Sum256([]byte("")))
@@ -138,11 +140,10 @@ func main() {
 		h[i] = de
 	}*/
 
-	for {
-		/*time.Sleep(1 * time.Second)
-		for _, e := range h {
-			en := common.RetrieveEntry(e, &node)
-			common.DisplayDirectory(&en, 0)
-		}*/
-	}
+	// wait on itself
+	func() {
+		wg := sync.WaitGroup{}
+		wg.Add(1)
+		wg.Wait()
+	}()
 }

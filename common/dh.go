@@ -33,7 +33,7 @@ func GenKeyPair() (*ECDHKeyPair, error) {
 	return &ECDHKeyPair{PrivateKey: privateKey, PublicKeyX: pkX, PublicKeyY: pkY}, nil
 }
 
-func GetFormattedECDHPublicKey(publicKeyX *big.Int, publicKeyY *big.Int) [2 * 65]byte {
+func GetFormattedECDHKey(publicKeyX *big.Int, publicKeyY *big.Int) [2 * 65]byte {
 	formatted := [2 * 65]byte{}
 	publicKeyX.FillBytes(formatted[:65])
 	publicKeyY.FillBytes(formatted[65:])

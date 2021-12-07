@@ -6,11 +6,19 @@ import (
 	"encoding/binary"
 	"fmt"
 	"log"
+	"math/big"
 	"net"
 	"time"
 
 	lru "github.com/hashicorp/golang-lru"
 )
+
+type SessionKey struct {
+	keyPair     *ECDHKeyPair
+	sessionKey  [32]byte
+	SessionKeyX *big.Int
+	SessionKeyY *big.Int
+}
 
 type Node struct {
 	Name                 string
@@ -24,7 +32,7 @@ type Node struct {
 	ExportedDirectory    *Entry
 	Id                   uint32
 	// Maps a peer's name with an ECDH session key:
-	SessionKeys map[string][32]byte
+	SessionKeys map[string]SessionKey
 }
 
 func NewId(node *Node) uint32 {
@@ -135,6 +143,18 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 
 	case ErrorType:
 		log.Printf("Error: %s from %s", string(packet[headerLength:headerLength+int(packetLength)]), addr)
+
+	case DHKeyRequestType:
+		log.Printf("DHKeyRequest from %s", addr)
+		keys, err := GenKeyPair()
+		if err != nil {
+			log.Printf("Could not generate key pair: %s: aborting", err)
+			break
+		}
+		dhkey, err := makeDHKey(NewId(node), GetFormattedECDHKey(keys.PublicKeyX, keys.PublicKeyY), node)
+		if err == nil {
+			node.Conn.WriteToUDP(dhkey, addr)
+		}
 
 	default:
 		log.Printf("Packet type=%d from %s", packetType, addr)

@@ -301,7 +301,7 @@ func makePacket(packet []byte, peer string, node *Node, sign bool, encrypt bool)
 		}
 		var sig [32]byte
 		copy(sig[:], packet[len(packet)-SignatureLength:])
-		ciphertext := AES_256_GCM_encrypt(h, nonce, sig, k)
+		ciphertext := AES_256_GCM_encrypt(h, nonce, sig, k.sessionKey)
 
 		encryptedPacketLength := len(ciphertext) + len(nonce)
 
@@ -334,7 +334,7 @@ func decryptAndAuthenticatePacket(packet []byte, peer string, node *Node) []byte
 		signature := packet[len(packet)-SignatureLength:]
 		var sig [32]byte
 		copy(sig[:], signature)
-		AES_256_GCM_decrypt(body, nonce, sig, k)
+		AES_256_GCM_decrypt(body, nonce, sig, k.sessionKey)
 	}
 	return nil // TODO: that's actually an error
 }

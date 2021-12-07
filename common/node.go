@@ -223,6 +223,7 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 			log.Printf("SessionKey=%x", key)
 			k.sessionKey = key
 			k.ready = true
+			node.SessionKeys[peer] = k
 		}
 
 	default:

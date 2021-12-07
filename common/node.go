@@ -186,7 +186,7 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 			log.Printf("Could not generate key pair: %s: aborting", err)
 			break
 		}
-		dhkey, err := makeDHKey(NewId(node), GetFormattedECDHKey(keys.PublicKeyX, keys.PublicKeyY), node)
+		dhkey, err := MakeDHKey(NewId(node), GetFormattedECDHKey(keys.PublicKeyX, keys.PublicKeyY), node)
 		if err == nil {
 			node.Conn.WriteToUDP(dhkey, addr)
 			RefreshRegisteredPeers(node)

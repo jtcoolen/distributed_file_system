@@ -230,6 +230,9 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 
 func SendPeriodicHello(node *Node) {
 	for {
+		for i, s := range node.SessionKeys {
+			log.Printf("SessionKey(%s)=%x", i, s.sessionKey)
+		}
 		time.Sleep(HelloPeriod)
 		for _, addr := range node.BootstrapAddresses {
 			hello, err := MakeHello(NewId(node), node)

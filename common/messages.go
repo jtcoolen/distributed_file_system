@@ -270,8 +270,8 @@ func makeDHKeyRequest(id uint32, node *Node) ([]byte, error) {
 	return h, nil
 }
 
-func MakeDHKey(id uint32, formattedPublicKey [2 * 65]byte, node *Node) ([]byte, error) {
-	packetLength := 2 * 65
+func MakeDHKey(id uint32, formattedPublicKey [2 * 86]byte, node *Node) ([]byte, error) {
+	packetLength := 2 * 86
 	h := make([]byte, headerLength+packetLength+SignatureLength)
 	binary.BigEndian.PutUint32(h[0:4], id)
 	h[4] = DHKeyType
@@ -304,7 +304,10 @@ func makePacket(packet []byte, peer string, node *Node, sign bool, encrypt bool)
 		}
 		var sig [32]byte
 		copy(sig[:], packet[len(packet)-SignatureLength:])
-		ciphertext := AES_256_GCM_encrypt(h, nonce, sig, k.sessionKey)
+		ciphertext, err := AES_256_GCM_encrypt(h, nonce, sig, k.sessionKey)
+		if err != nil {
+			return nil, err
+		}
 
 		encryptedPacketLength := len(ciphertext) + len(nonce)
 

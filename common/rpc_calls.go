@@ -2,6 +2,7 @@ package common
 
 import (
 	"fmt"
+	"log"
 	"net"
 	"strings"
 )
@@ -114,10 +115,14 @@ func (t *Node) GetPeerRootHash(peer string, reply *string) error {
 }
 
 func (t *Node) SendDHKeyRequest(peer string, reply *string) error {
+	log.Print("HEY THERE")
 	dhRequest, _ := makeDHKeyRequest(NewId(t), t)
 	addrs, err := GetPeerAddresses(peer)
 	if err != nil {
 		return err
+	}
+	for i := range addrs {
+		log.Printf("%d", i)
 	}
 	if len(addrs) == 0 {
 		return ErrNoAddresses
@@ -126,9 +131,10 @@ func (t *Node) SendDHKeyRequest(peer string, reply *string) error {
 	if err != nil {
 		return err
 	}
-	if err == nil {
-		t.Conn.WriteToUDP(dhRequest, dest)
-	}
+
+	t.Conn.WriteToUDP(dhRequest, dest)
+	hello, _ := MakeHello(NewId(t), t)
+	t.Conn.WriteToUDP(hello, dest)
 
 	return nil
 }

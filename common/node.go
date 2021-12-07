@@ -217,8 +217,9 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 			if err != nil {
 				log.Printf("Error GenKey !!!!!! %s", err)
 				delete(node.SessionKeys, peer)
+				break
 			}
-			k.sessionKey = key
+			copy(k.sessionKey[:], key[:])
 			k.ready = true
 		}
 

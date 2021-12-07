@@ -290,6 +290,9 @@ func makePacket(packet []byte, peer string, node *Node, sign bool, encrypt bool)
 		return nil, ErrMakePacket
 	}
 	if k, found := node.SessionKeys[peer]; found {
+		if !k.ready {
+			return nil, ErrMakePacket
+		}
 		fmt.Println(k)
 		p := packet[headerLength : len(packet)-SignatureLength]
 		h := make([]byte, len(p)+1)
@@ -297,7 +300,7 @@ func makePacket(packet []byte, peer string, node *Node, sign bool, encrypt bool)
 		copy(h, p)
 		nonce := make([]byte, 12)
 		if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
-			panic(err.Error())
+			log.Print(err)
 		}
 		var sig [32]byte
 		copy(sig[:], packet[len(packet)-SignatureLength:])
@@ -324,11 +327,14 @@ func makePacket(packet []byte, peer string, node *Node, sign bool, encrypt bool)
 	return packet, nil
 }
 
-func decryptAndAuthenticatePacket(packet []byte, peer string, node *Node) []byte {
+func decryptAndAuthenticatePacket(packet []byte, peer string, node *Node) ([]byte, error) {
 	if packet[4] != EncryptedPacketType {
-		return packet
+		return packet, nil
 	}
 	if k, found := node.SessionKeys[peer]; found {
+		if !k.ready {
+			return nil, ErrMakePacket
+		}
 		body := packet[headerLength : len(packet)-nonceLength-SignatureLength]
 		nonce := packet[len(packet)-nonceLength-SignatureLength : len(packet)-SignatureLength]
 		signature := packet[len(packet)-SignatureLength:]
@@ -336,5 +342,5 @@ func decryptAndAuthenticatePacket(packet []byte, peer string, node *Node) []byte
 		copy(sig[:], signature)
 		AES_256_GCM_decrypt(body, nonce, sig, k.sessionKey)
 	}
-	return nil // TODO: that's actually an error
+	return nil, ErrMakePacket
 }

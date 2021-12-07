@@ -3,10 +3,10 @@ package common
 import (
 	"bytes"
 	"crypto/ecdsa"
+	"crypto/sha256"
 	"encoding/binary"
 	"fmt"
 	"log"
-	"math/big"
 	"net"
 	"time"
 
@@ -14,10 +14,9 @@ import (
 )
 
 type SessionKey struct {
-	keyPair     *ECDHKeyPair
-	sessionKey  [32]byte
-	SessionKeyX *big.Int
-	SessionKeyY *big.Int
+	keyPair    *ECDHKeyPair
+	sessionKey [sha256.Size]byte
+	ready      bool
 }
 
 type Node struct {
@@ -195,7 +194,26 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 				return
 			}
 			delete(node.SessionKeys, peer)
-			node.SessionKeys[peer] = SessionKey{keyPair: keys}
+			node.SessionKeys[peer] = SessionKey{keyPair: keys, ready: false}
+		}
+
+	case DHKeyType:
+		log.Printf("DHKey from %s", addr)
+		var formattedPublicKey [130]byte
+		copy(formattedPublicKey[:], packet[headerLength:])
+		RefreshRegisteredPeers(node)
+		peer, err := FindPeerFromAddr(addr, node)
+		if err != nil {
+			delete(node.SessionKeys, peer)
+			return
+		}
+		if k, found := node.SessionKeys[peer]; found {
+			key, err := GenSessionKey(formattedPublicKey, k.keyPair.PrivateKey)
+			if err != nil {
+				delete(node.SessionKeys, peer)
+			}
+			k.sessionKey = key
+			k.ready = true
 		}
 
 	default:

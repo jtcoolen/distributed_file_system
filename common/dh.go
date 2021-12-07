@@ -3,6 +3,7 @@ package common
 import (
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/sha256"
 	"math/big"
 )
 
@@ -40,13 +41,21 @@ func GetFormattedECDHKey(publicKeyX *big.Int, publicKeyY *big.Int) [2 * 65]byte 
 	return formatted
 }
 
-func GenSessionKey(publicKey [2 * 65]byte, privateKey []byte) (*big.Int, *big.Int, error) {
+func GenSessionKey(publicKey [2 * 65]byte, privateKey []byte) ([sha256.Size]byte, error) {
 	var x, y big.Int
+	formatted := [2 * 65]byte{}
+
 	x.SetBytes(publicKey[:65])
 	y.SetBytes(publicKey[65:])
+
 	if !elliptic.P521().IsOnCurve(&x, &y) {
-		return nil, nil, ErrPubKeyOutOfCurve
+		return sha256.Sum256(formatted[:]), ErrPubKeyOutOfCurve
 	}
+
 	mx, my := elliptic.P521().ScalarMult(&x, &y, privateKey)
-	return mx, my, nil
+
+	mx.FillBytes(formatted[:65])
+	my.FillBytes(formatted[65:])
+
+	return sha256.Sum256(formatted[:]), nil
 }

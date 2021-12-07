@@ -21,6 +21,7 @@ type SessionKey struct {
 
 type Node struct {
 	Name                 string
+	Port                 int
 	PrivateKey           *ecdsa.PrivateKey
 	PublicKey            *ecdsa.PublicKey
 	FormattedPublicKey   [64]byte

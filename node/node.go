@@ -3,9 +3,9 @@ package main
 import (
 	"crypto/sha256"
 	"dfs/common"
+	"flag"
 	"log"
 	"net"
-	"os"
 	"sync"
 
 	lru "github.com/hashicorp/golang-lru"
@@ -34,10 +34,12 @@ var myDir = common.Entry{
 }
 
 func main() {
-	if len(os.Args) > 1 {
-		clientName = os.Args[1]
-		log.Printf("clientName: %s\n", clientName)
-	}
+	var port int
+	flag.IntVar(&port, "p", 12345, "Port number")
+	var peerName string
+	flag.StringVar(&clientName, "n", "test", "Peer name")
+
+	flag.Parse() // after declaring flags we need to call it
 
 	publicKey, privateKey, err := common.GenECDSAKeyPair()
 	if err != nil {
@@ -65,7 +67,7 @@ func main() {
 	}
 
 	addr := net.UDPAddr{
-		Port: 12355,
+		Port: port,
 		IP:   net.IP{0, 0, 0, 0}, // listen to all addresses
 	}
 
@@ -84,7 +86,7 @@ func main() {
 	myDir.Hash = common.ComputeHash(&myDir)
 
 	node := common.Node{
-		Name:                 clientName,
+		Name:                 peerName,
 		PrivateKey:           privateKey,
 		PublicKey:            publicKey,
 		FormattedPublicKey:   formattedPublicKey,

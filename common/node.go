@@ -116,6 +116,7 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 			log.Printf("Decryption error: %s: aborting", err)
 			return
 		}
+		log.Printf("Successful decryption!")
 	}
 
 	switch packetType {

@@ -32,7 +32,42 @@ type Node struct {
 	ExportedDirectory    *Entry
 	Id                   uint32
 	// Maps a peer's name with an ECDH session key:
-	SessionKeys map[string]SessionKey
+	SessionKeys     map[string]SessionKey
+	RegisteredPeers map[string][]*net.UDPAddr
+}
+
+func RefreshRegisteredPeers(node *Node) {
+	peers, err := GetPeers()
+	if err != nil {
+		return
+	}
+	for _, p := range peers {
+		delete(node.RegisteredPeers, string(p))
+		node.RegisteredPeers[string(p)] = make([]*net.UDPAddr, 10)
+		addrs, err := GetPeerAddresses(string(p))
+		if err != nil {
+			return
+		}
+		for _, a := range addrs {
+			log.Printf("Addr = %s", string(a))
+			dest, err := net.ResolveUDPAddr("udp", string(a))
+			if err != nil {
+				return
+			}
+			node.RegisteredPeers[string(p)] = append(node.RegisteredPeers[string(p)], dest)
+		}
+	}
+}
+
+func FindPeerFromAddr(addr *net.UDPAddr, node *Node) (string, error) {
+	for peer, peerAddrs := range node.RegisteredPeers {
+		for _, pAddr := range peerAddrs {
+			if addr.IP.Equal(pAddr.IP) && addr.Port == pAddr.Port {
+				return peer, nil
+			}
+		}
+	}
+	return "", ErrNotFound
 }
 
 func NewId(node *Node) uint32 {
@@ -154,6 +189,13 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 		dhkey, err := makeDHKey(NewId(node), GetFormattedECDHKey(keys.PublicKeyX, keys.PublicKeyY), node)
 		if err == nil {
 			node.Conn.WriteToUDP(dhkey, addr)
+			RefreshRegisteredPeers(node)
+			peer, err := FindPeerFromAddr(addr, node)
+			if err != nil {
+				return
+			}
+			delete(node.SessionKeys, peer)
+			node.SessionKeys[peer] = SessionKey{keyPair: keys}
 		}
 
 	default:

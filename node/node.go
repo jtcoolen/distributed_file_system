@@ -96,8 +96,8 @@ func main() {
 		Id:                   1,
 		SessionKeys:          make(map[string]common.SessionKey),
 	}
+
 	log.Printf("My root hash is %x", common.ComputeHash(node.ExportedDirectory))
-	log.Printf("Empty string hash is %x", sha256.Sum256([]byte("")))
 
 	// Start RPC server
 	go common.RpcServer(&node)

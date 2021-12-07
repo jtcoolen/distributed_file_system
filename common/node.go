@@ -121,7 +121,8 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 		}
 		log.Printf("Successful decryption!")
 		// update packet length
-		packetLength = packetLength - SignatureLength - nonceLength - 1
+		packetLength = binary.BigEndian.Uint16(packet[1+5 : 1+headerLength])
+		//packetLength = packetLength - SignatureLength - nonceLength - 1
 	}
 
 	switch packetType {

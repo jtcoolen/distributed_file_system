@@ -59,7 +59,7 @@ func GenSessionKey(publicKey [2 * 66]byte, privateKey []byte) ([sha256.Size]byte
 	mx.FillBytes(formatted[:66])
 	my.FillBytes(formatted[66:])
 
-	log.Print("GOOD POINT")
+	log.Printf("GOOD POINT; formatted=%x", formatted[:])
 
 	return sha256.Sum256(formatted[:]), nil
 }

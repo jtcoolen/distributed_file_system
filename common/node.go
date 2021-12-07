@@ -219,6 +219,7 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 				delete(node.SessionKeys, peer)
 				break
 			}
+			log.Printf("SessionKey=%x", key)
 			copy(k.sessionKey[:], key[:])
 			k.ready = true
 		}

@@ -197,7 +197,8 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 				return
 			}
 			delete(node.SessionKeys, peer)
-			node.SessionKeys[peer] = SessionKey{keyPair: keys, ready: false}
+			var s [sha256.Size]byte
+			node.SessionKeys[peer] = SessionKey{keyPair: keys, sessionKey: s, ready: false}
 		}
 
 	case DHKeyType:

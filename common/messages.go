@@ -319,12 +319,17 @@ func makePacket(packet []byte, addr *net.UDPAddr, node *Node) ([]byte, error) {
 		encryptedPacket[4] = EncryptedPacketType
 		binary.BigEndian.PutUint16(encryptedPacket[5:headerLength], uint16(encryptedPacketLength))
 
+		// copy ciphertext
+		copy(encryptedPacket[headerLength:], ciphertext)
+
 		// append signature of plaintext at the end
 		copy(encryptedPacket[len(encryptedPacket)-SignatureLength:], packet[len(packet)-SignatureLength:])
+		log.Printf("Sig=%x, %x", sig, encryptedPacket[len(encryptedPacket)-SignatureLength:])
 
 		// append nonce before signature
 		copy(encryptedPacket[len(encryptedPacket)-len(nonce)-SignatureLength:len(encryptedPacket)-SignatureLength], nonce)
 
+		log.Printf("Nonce=%x, %x", nonce, encryptedPacket[len(encryptedPacket)-len(nonce)-SignatureLength:len(encryptedPacket)-SignatureLength])
 		return encryptedPacket, nil
 	}
 

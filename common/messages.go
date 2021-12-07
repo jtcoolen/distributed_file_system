@@ -342,6 +342,7 @@ func decryptAndAuthenticatePacket(packet []byte, addr *net.UDPAddr, node *Node) 
 	}
 	if k, found := node.SessionKeys[peer]; found {
 		if !k.ready {
+			log.Printf("K NOT READY")
 			return nil, ErrMakePacket
 		}
 		body := packet[headerLength : len(packet)-nonceLength-SignatureLength]
@@ -349,7 +350,13 @@ func decryptAndAuthenticatePacket(packet []byte, addr *net.UDPAddr, node *Node) 
 		signature := packet[len(packet)-SignatureLength:]
 		var sig [32]byte
 		copy(sig[:], signature)
-		AES_256_GCM_decrypt(body, nonce, sig, k.sessionKey)
+		body, err = AES_256_GCM_decrypt(body, nonce, sig, k.sessionKey)
+		if err != nil {
+			log.Printf("Decryption failure! %s", err)
+			return nil, ErrMakePacket
+		}
+		return body, nil
 	}
+	log.Printf("No session key found!")
 	return nil, ErrMakePacket
 }

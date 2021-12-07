@@ -285,8 +285,9 @@ func MakeDHKey(id uint32, formattedPublicKey [2 * 66]byte, node *Node) ([]byte, 
 	return h, nil
 }
 
-func makePacket(packet []byte, peer string, node *Node, sign bool, encrypt bool) ([]byte, error) {
-	if encrypt && !sign {
+func makePacket(packet []byte, addr *net.UDPAddr, node *Node) ([]byte, error) {
+	peer, err := FindPeerFromAddr(addr, node)
+	if err != nil {
 		return nil, ErrMakePacket
 	}
 	if k, found := node.SessionKeys[peer]; found {
@@ -330,8 +331,13 @@ func makePacket(packet []byte, peer string, node *Node, sign bool, encrypt bool)
 	return packet, nil
 }
 
-func decryptAndAuthenticatePacket(packet []byte, peer string, node *Node) ([]byte, error) {
+func decryptAndAuthenticatePacket(packet []byte, addr *net.UDPAddr, node *Node) ([]byte, error) {
 	if packet[4] != EncryptedPacketType {
+		return packet, nil
+	}
+	peer, err := FindPeerFromAddr(addr, node)
+	if err != nil {
+		// at this point, something is very wrong
 		return packet, nil
 	}
 	if k, found := node.SessionKeys[peer]; found {

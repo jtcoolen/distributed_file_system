@@ -108,6 +108,16 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 		return
 	}*/
 
+	var err error
+
+	if packetType == EncryptedPacketType {
+		packet, err = decryptAndAuthenticatePacket(packet, addr, node)
+		if err != nil {
+			log.Printf("Decryption error: %s: aborting", err)
+			return
+		}
+	}
+
 	switch packetType {
 	case HelloType:
 		log.Printf("Hello from %s", addr)
@@ -392,6 +402,12 @@ func RetrieveEntry(hash [32]byte, peer string, addr *net.UDPAddr, node *Node) En
 		}
 
 		datum, err := makeGetDatum(id, hashes[0], node)
+		if err != nil {
+			log.Print(err)
+			return root
+		}
+
+		datum, err = makePacket(datum, addr, node)
 		if err != nil {
 			log.Print(err)
 			return root

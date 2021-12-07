@@ -223,6 +223,7 @@ func main() {
 		fmt.Println(*reply)
 
 	case "sendDHKeyRequest":
+		SendDHKeyRequest.Parse(os.Args[2:])
 		client, err := rpc.DialHTTP("tcp", "localhost:9000")
 		if err != nil {
 			log.Fatal("dialing:", err)

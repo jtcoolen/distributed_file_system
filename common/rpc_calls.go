@@ -139,21 +139,24 @@ func (t *Node) SendDHKeyRequest(peer string, reply *string) error {
 	if len(addrs) == 0 {
 		return ErrNoAddresses
 	}
-	dest, err := net.ResolveUDPAddr("udp", string(addrs[0]))
-	if err != nil {
-		return err
-	}
-
-	waitPacket(id, dhRequest, t, dest, 10*time.Second)
-
-	if k, found := t.SessionKeys[peer]; found {
-		log.Print("HERE")
-		id = NewId(t)
-		dhkey, err := MakeDHKey(id, GetFormattedECDHKey(k.keyPair.PublicKeyX, k.keyPair.PublicKeyY), t)
+	for _, addr := range addrs {
+		dest, err := net.ResolveUDPAddr("udp", string(addr))
 		if err != nil {
-			return nil
+			return err
 		}
-		waitPacket(id, dhkey, t, dest, 10*time.Second)
+
+		waitPacket(id, dhRequest, t, dest, 10*time.Second)
+
+		if k, found := t.SessionKeys[peer]; found {
+			log.Print("HERE")
+			id = NewId(t)
+			dhkey, err := MakeDHKey(id, GetFormattedECDHKey(k.keyPair.PublicKeyX, k.keyPair.PublicKeyY), t)
+			if err != nil {
+				return nil
+			}
+			waitPacket(id, dhkey, t, dest, 10*time.Second)
+		}
+
 	}
 
 	// Something bad happened

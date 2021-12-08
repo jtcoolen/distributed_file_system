@@ -214,10 +214,14 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 		dhkey, err := MakeDHKey(NewId(node), GetFormattedECDHKey(keys.PublicKeyX, keys.PublicKeyY), node)
 		if err == nil {
 			node.Conn.WriteToUDP(dhkey, addr)
-			RefreshRegisteredPeers(node)
+
 			peer, err := FindPeerFromAddr(addr, node)
 			if err != nil {
-				return
+				RefreshRegisteredPeers(node)
+				peer, err = FindPeerFromAddr(addr, node)
+				if err != nil {
+					return
+				}
 			}
 			delete(node.SessionKeys, peer)
 			var s [sha256.Size]byte

@@ -168,6 +168,11 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 		var h [32]byte
 		copy(h[:], packet[headerLength:headerLength+HashLength])
 		reply, err := makeDatum(id, h, node)
+		if err != nil {
+			log.Printf("Datum initialization failure")
+			break
+		}
+
 		if err == nil {
 			node.Conn.WriteToUDP(reply, addr)
 			log.Printf("Replied to getDatum with id=%d to address %s", id, addr)

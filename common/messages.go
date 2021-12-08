@@ -286,12 +286,15 @@ func MakeDHKey(id uint32, formattedPublicKey [2 * 66]byte, node *Node) ([]byte, 
 }
 
 func makePacket(packet []byte, addr *net.UDPAddr, node *Node) ([]byte, error) {
+	RefreshRegisteredPeers(node)
 	peer, err := FindPeerFromAddr(addr, node)
 	if err != nil {
+		log.Printf("PeerNotFound")
 		return nil, ErrMakePacket
 	}
 	if k, found := node.SessionKeys[peer]; found {
 		if !k.ready {
+			log.Printf("K NOT READY")
 			return nil, ErrMakePacket
 		}
 		fmt.Println(k)
@@ -340,8 +343,10 @@ func decryptAndAuthenticatePacket(packet []byte, addr *net.UDPAddr, node *Node) 
 	if packet[4] != EncryptedPacketType {
 		return packet, nil
 	}
+	RefreshRegisteredPeers(node)
 	peer, err := FindPeerFromAddr(addr, node)
 	if err != nil {
+		log.Printf("Peer not found")
 		// at this point, something is very wrong
 		return packet, nil
 	}

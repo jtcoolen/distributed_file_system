@@ -271,6 +271,7 @@ func SendPeriodicHello(node *Node) {
 
 func ReceiveIncomingMessages(node *Node) {
 	for {
+		RefreshRegisteredPeers(node)
 		buffer := make([]byte, 8192) // TODO: be careful when parsing
 		n, remoteAddr, err := 0, new(net.UDPAddr), error(nil)
 		for err == nil {

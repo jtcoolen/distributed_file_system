@@ -29,7 +29,7 @@ func (t *Node) RetrieveEntry(args *RetrieveEntryArgs, reply *Entry) error {
 	for _, addr := range peer {
 		dest, err := net.ResolveUDPAddr("udp", string(addr))
 		if err != nil {
-			return err
+			continue
 		}
 		dests := make([]*net.UDPAddr, 1)
 		dests[0] = dest
@@ -60,7 +60,7 @@ func (t *Node) RetrieveEntryByPath(args *RetrieveEntryByPathArgs, reply *Entry) 
 	for _, addr := range peer {
 		dest, err := net.ResolveUDPAddr("udp", string(addr))
 		if err != nil {
-			return err
+			continue
 		}
 		dests := make([]*net.UDPAddr, 1)
 		dests[0] = dest
@@ -99,7 +99,7 @@ func (t *Node) DisplayDirectoryPath(args *RetrieveEntryByPathArgs, reply *string
 	for _, addr := range peer {
 		dest, err := net.ResolveUDPAddr("udp", string(addr))
 		if err != nil {
-			return err
+			continue
 		}
 		dests := make([]*net.UDPAddr, 1)
 		dests[0] = dest
@@ -164,7 +164,7 @@ func (t *Node) SendDHKeyRequest(peer string, reply *string) error {
 	for _, addr := range addrs {
 		dest, err := net.ResolveUDPAddr("udp", string(addr))
 		if err != nil {
-			return err
+			continue
 		}
 		dests := make([]*net.UDPAddr, 1)
 		dests[0] = dest

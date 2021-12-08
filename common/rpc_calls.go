@@ -33,7 +33,9 @@ func (t *Node) RetrieveEntry(args *RetrieveEntryArgs, reply *Entry) error {
 		}
 		dests := make([]*net.UDPAddr, 1)
 		dests[0] = dest
-		ContactNodeBehindAddr(dests, t)
+		if ContactNodeBehindAddr(dests, t) != nil {
+			continue
+		}
 		*reply = RetrieveEntry(args.Hash, args.Peer, dest, t)
 		if reply.Type == Directory && reply.Name == "" && reply.Children == nil && reply.Data == nil {
 			return ErrNotFound
@@ -62,7 +64,9 @@ func (t *Node) RetrieveEntryByPath(args *RetrieveEntryByPathArgs, reply *Entry) 
 		}
 		dests := make([]*net.UDPAddr, 1)
 		dests[0] = dest
-		ContactNodeBehindAddr(dests, t)
+		if ContactNodeBehindAddr(dests, t) != nil {
+			continue
+		}
 		rootEntry := RetrieveEntry(rootHash, args.Peer, dest, t)
 		s := strings.Split(args.Path, "/")
 		if s[0] == "" {
@@ -99,7 +103,9 @@ func (t *Node) DisplayDirectoryPath(args *RetrieveEntryByPathArgs, reply *string
 		}
 		dests := make([]*net.UDPAddr, 1)
 		dests[0] = dest
-		ContactNodeBehindAddr(dests, t)
+		if ContactNodeBehindAddr(dests, t) != nil {
+			continue
+		}
 		rootEntry := RetrieveEntry(rootHash, args.Peer, dest, t)
 		s := strings.Split(args.Path, "/")
 		if s[0] == "" {
@@ -162,7 +168,9 @@ func (t *Node) SendDHKeyRequest(peer string, reply *string) error {
 		}
 		dests := make([]*net.UDPAddr, 1)
 		dests[0] = dest
-		ContactNodeBehindAddr(dests, t)
+		if ContactNodeBehindAddr(dests, t) != nil {
+			continue
+		}
 
 		waitPacket(id, dhRequest, t, dest, 10*time.Second)
 

@@ -345,7 +345,10 @@ func ContactNodeBehindAddr(addrs []*net.UDPAddr, node *Node) error {
 			return err
 		}
 
-		node.Conn.WriteToUDP(hello, dest)
+		_, err = node.Conn.WriteToUDP(hello, dest)
+		if err != nil {
+			return err
+		}
 
 		p := waitPacket(id, hello, node, dest, 10*time.Second)
 		if p != nil {
@@ -359,7 +362,10 @@ func ContactNodeBehindAddr(addrs []*net.UDPAddr, node *Node) error {
 			id := NewId(node)
 			hello, err = makeNatTraversalRequest(id, *dest, node)
 			if err == nil {
-				node.Conn.WriteToUDP(hello, a)
+				_, err = node.Conn.WriteToUDP(hello, a)
+				if err != nil {
+					return err
+				}
 				continue
 			}
 		}
@@ -369,7 +375,10 @@ func ContactNodeBehindAddr(addrs []*net.UDPAddr, node *Node) error {
 		id = NewId(node)
 		hello, err = MakeHello(id, node)
 		if err == nil {
-			node.Conn.WriteToUDP(hello, dest)
+			_, err = node.Conn.WriteToUDP(hello, dest)
+			if err != nil {
+				return err
+			}
 			log.Printf("Sent hello to %s", dest)
 			continue
 		}

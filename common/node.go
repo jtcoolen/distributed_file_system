@@ -112,11 +112,18 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 
 	if packetType == EncryptedPacketType {
 		packet, err = decryptAndAuthenticatePacket(packet, addr, node)
+		// Retrieve packet type
+		packetType = packet[0]
+		packet = packet[1:]
 		if err != nil {
 			log.Printf("Decryption error: %s: aborting", err)
 			return
 		}
 		log.Printf("Successful decryption!")
+		// update packet length
+		packetLength = binary.BigEndian.Uint16(packet[5:headerLength])
+		log.Printf("packet len=%d", packetLength)
+		log.Printf("packet len2=%d", packetLength-SignatureLength-nonceLength-1-uint16(headerLength))
 	}
 
 	switch packetType {
@@ -161,6 +168,11 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 		var h [32]byte
 		copy(h[:], packet[headerLength:headerLength+HashLength])
 		reply, err := makeDatum(id, h, node)
+		if err != nil {
+			log.Printf("Datum initialization failure")
+			break
+		}
+
 		if err == nil {
 			node.Conn.WriteToUDP(reply, addr)
 			log.Printf("Replied to getDatum with id=%d to address %s", id, addr)
@@ -202,10 +214,14 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 		dhkey, err := MakeDHKey(NewId(node), GetFormattedECDHKey(keys.PublicKeyX, keys.PublicKeyY), node)
 		if err == nil {
 			node.Conn.WriteToUDP(dhkey, addr)
-			RefreshRegisteredPeers(node)
+
 			peer, err := FindPeerFromAddr(addr, node)
 			if err != nil {
-				return
+				RefreshRegisteredPeers(node)
+				peer, err = FindPeerFromAddr(addr, node)
+				if err != nil {
+					return
+				}
 			}
 			delete(node.SessionKeys, peer)
 			var s [sha256.Size]byte
@@ -332,7 +348,10 @@ func ContactNodeBehindAddr(addrs []*net.UDPAddr, node *Node) error {
 			return err
 		}
 
-		node.Conn.WriteToUDP(hello, dest)
+		_, err = node.Conn.WriteToUDP(hello, dest)
+		if err != nil {
+			return err
+		}
 
 		p := waitPacket(id, hello, node, dest, 10*time.Second)
 		if p != nil {
@@ -346,7 +365,10 @@ func ContactNodeBehindAddr(addrs []*net.UDPAddr, node *Node) error {
 			id := NewId(node)
 			hello, err = makeNatTraversalRequest(id, *dest, node)
 			if err == nil {
-				node.Conn.WriteToUDP(hello, a)
+				_, err = node.Conn.WriteToUDP(hello, a)
+				if err != nil {
+					return err
+				}
 				continue
 			}
 		}
@@ -356,7 +378,10 @@ func ContactNodeBehindAddr(addrs []*net.UDPAddr, node *Node) error {
 		id = NewId(node)
 		hello, err = MakeHello(id, node)
 		if err == nil {
-			node.Conn.WriteToUDP(hello, dest)
+			_, err = node.Conn.WriteToUDP(hello, dest)
+			if err != nil {
+				return err
+			}
 			log.Printf("Sent hello to %s", dest)
 			continue
 		}

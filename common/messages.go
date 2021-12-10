@@ -288,10 +288,15 @@ func MakeDHKey(id uint32, formattedPublicKey [2 * 66]byte, node *Node) ([]byte, 
 func makePacket(packet []byte, addr *net.UDPAddr, node *Node) ([]byte, error) {
 	peer, err := FindPeerFromAddr(addr, node)
 	if err != nil {
-		return nil, ErrMakePacket
+		RefreshRegisteredPeers(node)
+		peer, err = FindPeerFromAddr(addr, node)
+		if err != nil {
+			return nil, err
+		}
 	}
 	if k, found := node.SessionKeys[peer]; found {
 		if !k.ready {
+			log.Printf("K NOT READY")
 			return nil, ErrMakePacket
 		}
 		fmt.Println(k)
@@ -319,12 +324,17 @@ func makePacket(packet []byte, addr *net.UDPAddr, node *Node) ([]byte, error) {
 		encryptedPacket[4] = EncryptedPacketType
 		binary.BigEndian.PutUint16(encryptedPacket[5:headerLength], uint16(encryptedPacketLength))
 
+		// copy ciphertext
+		copy(encryptedPacket[headerLength:], ciphertext)
+
 		// append signature of plaintext at the end
 		copy(encryptedPacket[len(encryptedPacket)-SignatureLength:], packet[len(packet)-SignatureLength:])
+		log.Printf("Sig=%x, %x", sig, encryptedPacket[len(encryptedPacket)-SignatureLength:])
 
 		// append nonce before signature
 		copy(encryptedPacket[len(encryptedPacket)-len(nonce)-SignatureLength:len(encryptedPacket)-SignatureLength], nonce)
 
+		log.Printf("Nonce=%x, %x", nonce, encryptedPacket[len(encryptedPacket)-len(nonce)-SignatureLength:len(encryptedPacket)-SignatureLength])
 		return encryptedPacket, nil
 	}
 
@@ -337,8 +347,11 @@ func decryptAndAuthenticatePacket(packet []byte, addr *net.UDPAddr, node *Node) 
 	}
 	peer, err := FindPeerFromAddr(addr, node)
 	if err != nil {
-		// at this point, something is very wrong
-		return packet, nil
+		RefreshRegisteredPeers(node)
+		peer, err = FindPeerFromAddr(addr, node)
+		if err != nil {
+			return nil, err
+		}
 	}
 	if k, found := node.SessionKeys[peer]; found {
 		if !k.ready {

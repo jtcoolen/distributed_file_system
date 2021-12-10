@@ -28,13 +28,20 @@ func (t *Node) RetrieveEntry(args *RetrieveEntryArgs, reply *Entry) error {
 	if len(peer) == 0 {
 		return ErrNoAddresses
 	}
-	dest, err := net.ResolveUDPAddr("udp", string(peer[0]))
-	if err != nil {
-		return err
-	}
-	*reply = RetrieveEntry(args.Hash, args.Peer, dest, t)
-	if reply.Type == Directory && reply.Name == "" && reply.Children == nil && reply.Data == nil {
-		return ErrNotFound
+	for _, addr := range peer {
+		dest, err := net.ResolveUDPAddr("udp", string(addr))
+		if err != nil {
+			continue
+		}
+		dests := make([]*net.UDPAddr, 1)
+		dests[0] = dest
+		if ContactNodeBehindAddr(dests, t) != nil {
+			continue
+		}
+		*reply = RetrieveEntry(args.Hash, args.Peer, dest, t)
+		if reply.Type == Directory && reply.Name == "" && reply.Children == nil && reply.Data == nil {
+			return ErrNotFound
+		}
 	}
 	return nil
 }
@@ -51,22 +58,30 @@ func (t *Node) RetrieveEntryByPath(args *RetrieveEntryByPathArgs, reply *Entry) 
 	if len(peer) == 0 {
 		return ErrNoAddresses
 	}
-	dest, err := net.ResolveUDPAddr("udp", string(peer[0]))
-	if err != nil {
-		return err
-	}
-	rootEntry := RetrieveEntry(rootHash, args.Peer, dest, t)
-	s := strings.Split(args.Path, "/")
-	if s[0] == "" {
-		s = s[1:]
-	}
-	if s[len(s)-1] == "" {
-		s = s[:len(s)-1]
-	}
-	entry := FindEntryByPath(s, &rootEntry)
-	if entry != nil {
-		*reply = *entry
-		return nil
+
+	for _, addr := range peer {
+		dest, err := net.ResolveUDPAddr("udp", string(addr))
+		if err != nil {
+			continue
+		}
+		dests := make([]*net.UDPAddr, 1)
+		dests[0] = dest
+		if ContactNodeBehindAddr(dests, t) != nil {
+			continue
+		}
+		rootEntry := RetrieveEntry(rootHash, args.Peer, dest, t)
+		s := strings.Split(args.Path, "/")
+		if s[0] == "" {
+			s = s[1:]
+		}
+		if s[len(s)-1] == "" {
+			s = s[:len(s)-1]
+		}
+		entry := FindEntryByPath(s, &rootEntry)
+		if entry != nil {
+			*reply = *entry
+			return nil
+		}
 	}
 	return ErrNotFound
 }
@@ -83,22 +98,29 @@ func (t *Node) DisplayDirectoryPath(args *RetrieveEntryByPathArgs, reply *string
 	if len(peer) == 0 {
 		return ErrNoAddresses
 	}
-	dest, err := net.ResolveUDPAddr("udp", string(peer[0]))
-	if err != nil {
-		return err
-	}
-	rootEntry := RetrieveEntry(rootHash, args.Peer, dest, t)
-	s := strings.Split(args.Path, "/")
-	if s[0] == "" {
-		s = s[1:]
-	}
-	if s[len(s)-1] == "" {
-		s = s[:len(s)-1]
-	}
-	str, err := DisplayDirectoryFromPath(s, &rootEntry)
-	if err == nil {
-		*reply = str
-		return nil
+	for _, addr := range peer {
+		dest, err := net.ResolveUDPAddr("udp", string(addr))
+		if err != nil {
+			continue
+		}
+		dests := make([]*net.UDPAddr, 1)
+		dests[0] = dest
+		if ContactNodeBehindAddr(dests, t) != nil {
+			continue
+		}
+		rootEntry := RetrieveEntry(rootHash, args.Peer, dest, t)
+		s := strings.Split(args.Path, "/")
+		if s[0] == "" {
+			s = s[1:]
+		}
+		if s[len(s)-1] == "" {
+			s = s[:len(s)-1]
+		}
+		str, err := DisplayDirectoryFromPath(s, &rootEntry)
+		if err == nil {
+			*reply = str
+			return nil
+		}
 	}
 	return ErrNotFound
 }
@@ -141,21 +163,29 @@ func (t *Node) SendDHKeyRequest(peer string, reply *string) error {
 	if len(addrs) == 0 {
 		return ErrNoAddresses
 	}
-	dest, err := net.ResolveUDPAddr("udp", string(addrs[0]))
-	if err != nil {
-		return err
-	}
-
-	waitPacket(id, dhRequest, t, dest, 10*time.Second)
-
-	if k, found := t.SessionKeys[peer]; found {
-		log.Print("HERE")
-		id = NewId(t)
-		dhkey, err := MakeDHKey(id, GetFormattedECDHKey(k.keyPair.PublicKeyX, k.keyPair.PublicKeyY), t)
+	for _, addr := range addrs {
+		dest, err := net.ResolveUDPAddr("udp", string(addr))
 		if err != nil {
-			return nil
+			continue
 		}
-		waitPacket(id, dhkey, t, dest, 10*time.Second)
+		dests := make([]*net.UDPAddr, 1)
+		dests[0] = dest
+		if ContactNodeBehindAddr(dests, t) != nil {
+			continue
+		}
+
+		waitPacket(id, dhRequest, t, dest, 10*time.Second)
+
+		if k, found := t.SessionKeys[peer]; found {
+			log.Print("HERE")
+			id = NewId(t)
+			dhkey, err := MakeDHKey(id, GetFormattedECDHKey(k.keyPair.PublicKeyX, k.keyPair.PublicKeyY), t)
+			if err != nil {
+				return nil
+			}
+			waitPacket(id, dhkey, t, dest, 10*time.Second)
+		}
+
 	}
 
 	// Something bad happened

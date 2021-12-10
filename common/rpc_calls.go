@@ -1,9 +1,11 @@
 package common
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"log"
 	"net"
+	"os"
 	"strings"
 	"time"
 )
@@ -157,5 +159,35 @@ func (t *Node) SendDHKeyRequest(peer string, reply *string) error {
 	}
 
 	// Something bad happened
+	return nil
+}
+
+func (t *Node) UpdateDirectory(path string, reply *string) error {
+	f, err := os.OpenFile(path, os.O_RDONLY, 0644) //TODO Minoo is this right?
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer f.Close()
+
+	var data []byte
+	_, err = f.Read(data)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	newFile := Entry{
+		Type:     Chunk,
+		Name:     path,
+		Hash:     sha256.Sum256([]byte("")),
+		Children: nil,
+		Data:     []byte(data),
+	}
+
+	newFile.Hash = ComputeHash(&newFile)
+	t.ExportedDirectory.Children = append(t.ExportedDirectory.Children, &newFile)
+	t.ExportedDirectory.Hash = ComputeHash(t.ExportedDirectory)
+	log.Printf("My new root hash is %x", ComputeHash(t.ExportedDirectory))
+
 	return nil
 }

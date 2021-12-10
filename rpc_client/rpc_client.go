@@ -107,6 +107,9 @@ func main() {
 	SendDHKeyRequestCmd := flag.NewFlagSet("sendDHKeyRequest", flag.ExitOnError)
 	peerSendDHKeyRequest := SendDHKeyRequestCmd.String("peer", "", "peer")
 
+	UpdateDirCmd := flag.NewFlagSet("updateDirectory", flag.ExitOnError)
+	filePath := UpdateDirCmd.String("path", "", "path")
+
 	//GetPeersCmd := flag.NewFlagSet("peers", flag.ExitOnError)
 
 	if len(os.Args) < 2 {
@@ -231,6 +234,17 @@ func main() {
 		err = client.Call("Node.SendDHKeyRequest", peerSendDHKeyRequest, nil)
 		if err != nil {
 			log.Fatal("Node.SendDHKeyRequest error:", err)
+		}
+
+	case "updateDirectory":
+		UpdateDirCmd.Parse(os.Args[2:])
+		client, err := rpc.DialHTTP("tcp", "localhost:9000")
+		if err != nil {
+			log.Fatal("dialing:", err)
+		}
+		err = client.Call("Node.UpdateDirectory", filePath, nil)
+		if err != nil {
+			log.Fatal("Node.UpdateDirectory error:", err)
 		}
 
 	default:

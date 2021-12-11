@@ -200,13 +200,15 @@ func (t *Node) UpdateDirectory(path string, reply *string) error {
 
 	defer f.Close()
 
-	var data []byte
+	data := make([]byte, 1024)
 	_, err = f.Read(data)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
+	log.Print(data)
+	log.Print(len(data))
 
-	newFile := Entry{
+	newFile := &Entry{
 		Type:     Chunk,
 		Name:     path,
 		Hash:     sha256.Sum256([]byte("")),
@@ -214,31 +216,12 @@ func (t *Node) UpdateDirectory(path string, reply *string) error {
 		Data:     []byte(data),
 	}
 
-	newFile.Hash = ComputeHash(&newFile)
+	newFile.Hash = ComputeHash(newFile)
 
-	oldDir := t.ExportedDirectory
-	newDir := Entry{
-		Type:     oldDir.Type,
-		Name:     oldDir.Name,
-		Hash:     oldDir.Hash,
-		Children: append(oldDir.Children, &newFile),
-		Data:     oldDir.Data,
-	}
+	t.ExportedDirectory.Children = append(t.ExportedDirectory.Children, newFile)
+	t.ExportedDirectory.Hash = ComputeHash(t.ExportedDirectory)
 
-	newDir.Hash = ComputeHash(&newDir)
-
-	*t = Node{Name: t.Name,
-		PrivateKey:           t.PrivateKey,
-		PublicKey:            t.PublicKey,
-		FormattedPublicKey:   t.FormattedPublicKey,
-		Conn:                 t.Conn,
-		BootstrapAddresses:   t.BootstrapAddresses,
-		PendingPacketQueries: t.PendingPacketQueries,
-		CachedEntries:        t.CachedEntries,
-		ExportedDirectory:    &newDir,
-		Id:                   t.Id,
-		SessionKeys:          t.SessionKeys,
-		RegisteredPeers:      t.RegisteredPeers}
+	DisplayDirectory(t.ExportedDirectory, 0)
 
 	log.Printf("My new root hash is %x", ComputeHash(t.ExportedDirectory))
 

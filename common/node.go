@@ -143,6 +143,7 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 		packetLength = binary.BigEndian.Uint16(packet[5:headerLength])
 		log.Printf("packet len=%d", packetLength)
 		log.Printf("packet len2=%d", packetLength-SignatureLength-nonceLength-1-uint16(headerLength))*/
+		return
 	}
 
 	switch packetType {

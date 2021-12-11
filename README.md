@@ -25,5 +25,5 @@
 - [x] Implement DH key exchange (Julien)
 - [ ] Write report: Usage instructions, Architecture, Features (with logs)
 ## Low priority
-- [ ] Packet Encryption?
-- [ ] Pipelining?
+- [x] Packet Encryption
+- [ ] Pipelining

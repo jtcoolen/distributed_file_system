@@ -121,17 +121,26 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 	var err error
 
 	if packetType == EncryptedPacketType {
-		packet, err = decryptAndAuthenticatePacket(packet, addr, node)
+		body, err := decryptAndAuthenticatePacket(packet, addr, node)
 		if err != nil {
 			log.Printf("Decryption error: %s: aborting", err)
 			return
 		}
 
 		// Retrieve packet type
-		packetType = packet[0]
-		packet = packet[1:]
+		pType := body[0]
+		if packetType != pType {
+			log.Print("Bad type")
+			return
+		}
+		body = body[1:]
 
 		log.Printf("Successful decryption!")
+		p := packet
+		packet = make([]byte, headerLength+len(body)+SignatureLength)
+		copy(packet, p[:headerLength])
+		copy(packet[headerLength:], body)
+		copy(packet[headerLength+len(body):], packet[packetLength-SignatureLength:])
 		// update packet length
 		packetLength = binary.BigEndian.Uint16(packet[5:headerLength])
 		log.Printf("packet len=%d", packetLength)
@@ -478,7 +487,6 @@ func RetrieveEntry(hash [32]byte, peer string, addr *net.UDPAddr, node *Node) (*
 		hashes = hashes[1:] // Remove processed hash
 
 		packetLength := binary.BigEndian.Uint16(packet[5:headerLength])
-		// TODO: check if announced packet size is correct, or detect if a datagram contains multiple messages
 
 		kind := packet[headerLength+HashLength]
 		var h [32]byte

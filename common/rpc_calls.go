@@ -189,7 +189,9 @@ func (t *Node) SendDHKeyRequest(peer string, reply *string) error {
 			if err != nil {
 				return nil
 			}
-			waitPacket(id, dhkey, t, dest, 10*time.Second)
+			if waitPacket(id, dhkey, t, dest, 10*time.Second) != nil {
+				return nil
+			}
 		}
 
 	}

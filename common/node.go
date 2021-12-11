@@ -122,13 +122,15 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 
 	if packetType == EncryptedPacketType {
 		packet, err = decryptAndAuthenticatePacket(packet, addr, node)
-		// Retrieve packet type
-		packetType = packet[0]
-		packet = packet[1:]
 		if err != nil {
 			log.Printf("Decryption error: %s: aborting", err)
 			return
 		}
+
+		// Retrieve packet type
+		packetType = packet[0]
+		packet = packet[1:]
+
 		log.Printf("Successful decryption!")
 		// update packet length
 		packetLength = binary.BigEndian.Uint16(packet[5:headerLength])

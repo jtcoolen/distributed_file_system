@@ -205,8 +205,6 @@ func (t *Node) UpdateDirectory(path string, reply *string) error {
 	if err != nil {
 		return err
 	}
-	log.Print(data)
-	log.Print(len(data))
 
 	newFile := &Entry{
 		Type:     Chunk,
@@ -221,7 +219,14 @@ func (t *Node) UpdateDirectory(path string, reply *string) error {
 	t.ExportedDirectory.Children = append(t.ExportedDirectory.Children, newFile)
 	t.ExportedDirectory.Hash = ComputeHash(t.ExportedDirectory)
 
-	DisplayDirectory(t.ExportedDirectory, 0)
+	packet, err := makeRoot(NewId(t), t.ExportedDirectory.Hash, t)
+	for _, addr := range t.BootstrapAddresses {
+		if err == nil {
+			t.Conn.WriteToUDP(packet, addr)
+		} else {
+			log.Printf("%s", err)
+		}
+	}
 
 	log.Printf("My new root hash is %x", ComputeHash(t.ExportedDirectory))
 

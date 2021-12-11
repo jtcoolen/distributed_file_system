@@ -97,16 +97,17 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 	packetLength := binary.BigEndian.Uint16(packet[5:headerLength])
 	log.Printf("packetLen=%d , len(packet)= %d , len(packet)-headerLength=%d", packetLength, len(packet), len(packet)-headerLength)
 	log.Printf("packet type=%d", packetType)
+
 	// TODO: check packet size (prevent buffer overflows from occurring)
-	/*if int(packetLength) < len(packet)-headerLength {
+	if (len(packet)-headerLength != int(packetLength)) || (len(packet)-headerLength != int(packetLength)+SignatureLength) {
 		reply, err := makeError(id, "wrong size", node)
 		if err == nil {
 			node.Conn.WriteToUDP(reply, addr)
 			return
 		}
-		log.Printf("%s", err)
+		log.Print("Discarded incomming message: wrong size")
 		return
-	}*/
+	}
 
 	var err error
 

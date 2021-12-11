@@ -127,16 +127,15 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 
 		// Retrieve packet type
 		pType := body[0]
-		if packetType != pType {
-			log.Print("Bad type")
-			return
-		}
 		body = body[1:]
 
 		log.Printf("Successful decryption!")
 		p := packet
 		packet = make([]byte, headerLength+len(body)+SignatureLength)
 		copy(packet, p[:headerLength])
+		packet[4] = pType
+		packetLength = binary.BigEndian.Uint16(packet[5:headerLength])
+		binary.BigEndian.PutUint16(packet[5:headerLength], uint16(headerLength)+uint16(len(body)))
 		copy(packet[headerLength:], body)
 		copy(packet[headerLength+len(body):], packet[packetLength-SignatureLength:])
 		// update packet length

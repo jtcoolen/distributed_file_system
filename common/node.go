@@ -500,7 +500,7 @@ func RetrieveEntry(hash [32]byte, peer string, addr *net.UDPAddr, node *Node) (*
 			currentEntry.Data = make([]byte, len)
 			if currentEntry.Hash != ComputeHash(currentEntry) {
 				log.Printf("Chunk: Hash Mismatch")
-				return root
+				return nil, ErrHashMismatch
 			}
 			copy(currentEntry.Data, packet[headerLength+HashLength+1:headerLength+int(packetLength)])
 
@@ -513,7 +513,7 @@ func RetrieveEntry(hash [32]byte, peer string, addr *net.UDPAddr, node *Node) (*
 				newChunk := Entry{Chunk, "", h, nil, nil}
 				if h != ComputeHash(&newChunk) {
 					log.Printf("Tree: Hash Mismatch")
-					return root
+					return nil, ErrHashMismatch
 				}
 				currentEntry.Children = append(currentEntry.Children, &newChunk)
 			}
@@ -530,7 +530,7 @@ func RetrieveEntry(hash [32]byte, peer string, addr *net.UDPAddr, node *Node) (*
 				newDir := Entry{Directory, string(name), h, nil, nil}
 				if h != ComputeHash(&newDir) {
 					log.Printf("Directory: Hash Mismatch")
-					return root
+					return nil, ErrHashMismatch
 				}
 				currentEntry.Children = append(currentEntry.Children, &newDir)
 			}

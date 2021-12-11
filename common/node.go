@@ -483,8 +483,12 @@ func RetrieveEntry(hash [32]byte, peer string, addr *net.UDPAddr, node *Node) En
 		case 0: // Chunk
 			currentEntry.Type = Chunk
 			len := int(packetLength) - HashLength - 1
-			// TODO: check hashes
+			// TODO Minoo: check hashes
 			currentEntry.Data = make([]byte, len)
+			if currentEntry.Hash != ComputeHash(currentEntry) {
+				log.Printf("Chunk: Hash Mismatch")
+				return root
+			}
 			copy(currentEntry.Data, packet[headerLength+HashLength+1:headerLength+int(packetLength)])
 
 		case 1: // Tree
@@ -493,7 +497,12 @@ func RetrieveEntry(hash [32]byte, peer string, addr *net.UDPAddr, node *Node) En
 			for i := 0; i < len/32; i += 1 {
 				copy(h[:], packet[headerLength+HashLength+1+i*32:headerLength+HashLength+1+i*32+32])
 				hashes = append(hashes, h)
-				currentEntry.Children = append(currentEntry.Children, &Entry{Chunk, "", h, nil, nil})
+				newChunk := Entry{Chunk, "", h, nil, nil}
+				if h != ComputeHash(&newChunk) {
+					log.Printf("Tree: Hash Mismatch")
+					return root
+				}
+				currentEntry.Children = append(currentEntry.Children, &newChunk)
 			}
 
 		case 2: // Directory
@@ -505,7 +514,12 @@ func RetrieveEntry(hash [32]byte, peer string, addr *net.UDPAddr, node *Node) En
 				var b [1]byte
 				name = bytes.Split(name, b[:])[0] // TODO: might be buggy
 				hashes = append(hashes, h)
-				currentEntry.Children = append(currentEntry.Children, &Entry{Directory, string(name), h, nil, nil})
+				newDir := Entry{Directory, string(name), h, nil, nil}
+				if h != ComputeHash(&newDir) {
+					log.Printf("Directory: Hash Mismatch")
+					return root
+				}
+				currentEntry.Children = append(currentEntry.Children, &newDir)
 			}
 		}
 	}

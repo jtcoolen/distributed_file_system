@@ -108,6 +108,7 @@ func resolve(id uint32, packet []byte, node *Node) {
 }
 
 func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
+	packetSigned := false
 	id := binary.BigEndian.Uint32(packet[0:4])
 	packetType := packet[4]
 	packetLength := binary.BigEndian.Uint16(packet[5:headerLength])
@@ -178,6 +179,7 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 			return
 		}
 		log.Print("Good signature")
+		packetSigned = true
 	}
 
 	switch packetType {
@@ -264,6 +266,9 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 		log.Printf("Error: %s from %s", string(packet[headerLength:headerLength+int(packetLength)]), addr)
 
 	case DHKeyRequestType:
+		if !packetSigned {
+			return
+		}
 		log.Printf("DHKeyRequest from %s", addr)
 		keys, err := GenKeyPair()
 		if err != nil {
@@ -288,6 +293,9 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 		}
 
 	case DHKeyType:
+		if !packetSigned {
+			return
+		}
 		log.Printf("DHKey from %s", addr)
 		var formattedPublicKey [2 * 66]byte
 		copy(formattedPublicKey[:], packet[headerLength:])

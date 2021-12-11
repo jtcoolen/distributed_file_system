@@ -134,17 +134,12 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 		p[4] = pType
 		binary.BigEndian.PutUint16(p[5:headerLength], uint16(len(body)))
 		copy(p[headerLength:], body)
-		//copy(p[headerLength+len(body):], packet[packetLength-SignatureLength:])
+		copy(p[headerLength+len(body):], packet[len(packet)-SignatureLength:])
 		// update packet length
 		packetLength = binary.BigEndian.Uint16(p[5:headerLength])
 		log.Printf("packet len=%d", packetLength)
-		log.Printf("packet len2=%d", packetLength-SignatureLength-nonceLength-1-uint16(headerLength))
+		//log.Printf("packet len2=%d", packetLength-SignatureLength-nonceLength-1-uint16(headerLength))
 		packet = p
-	}
-
-	if packetType == EncryptedPacketType {
-		log.Printf("packet len 2= %d", len(packet))
-		return
 	}
 
 	switch packetType {

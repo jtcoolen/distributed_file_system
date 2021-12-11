@@ -7,7 +7,6 @@ import (
 	"net"
 	"os"
 	"strings"
-	"time"
 )
 
 type RetrieveEntryArgs struct {
@@ -180,7 +179,7 @@ func (t *Node) SendDHKeyRequest(peer string, reply *string) error {
 			continue
 		}
 
-		waitPacket(id, dhRequest, t, dest, 10*time.Second)
+		waitPacket(id, dhRequest, t, dest)
 
 		if k, found := t.SessionKeys[peer]; found {
 			log.Print("HERE")
@@ -189,7 +188,7 @@ func (t *Node) SendDHKeyRequest(peer string, reply *string) error {
 			if err != nil {
 				return nil
 			}
-			waitPacket(id, dhkey, t, dest, 10*time.Second)
+			waitPacket(id, dhkey, t, dest)
 			return nil
 		}
 

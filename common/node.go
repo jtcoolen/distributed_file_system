@@ -313,10 +313,10 @@ func ReceiveIncomingMessages(node *Node) {
 	}
 }
 
-func waitPacket(id uint32, packet []byte, node *Node, addr *net.UDPAddr, timeout time.Duration) []byte { // TODO: return error after max retries
-	var delay time.Duration = 1000000000
+func waitPacket(id uint32, packet []byte, node *Node, addr *net.UDPAddr) []byte { // TODO: return error after max retries
+	var delay time.Duration = 100000000
 	limit := time.After(delay)
-	stopAt := time.After(timeout)
+	i := 0
 
 	if node.PendingPacketQueries[id] == nil {
 		node.PendingPacketQueries[id] = make(chan []byte)
@@ -325,16 +325,17 @@ func waitPacket(id uint32, packet []byte, node *Node, addr *net.UDPAddr, timeout
 	v := node.PendingPacketQueries[id]
 
 	for {
+		if i == 4 {
+			defer delete(node.PendingPacketQueries, id)
+			return nil
+		}
 		select {
 		case out := <-v:
 			defer delete(node.PendingPacketQueries, id)
 			return out
 
-		case <-stopAt:
-			defer delete(node.PendingPacketQueries, id)
-			return nil
-
 		case <-limit:
+			i++
 			_, err := node.Conn.WriteToUDP(packet, addr)
 			if err != nil {
 				log.Print(err)
@@ -375,7 +376,7 @@ func ContactNodeBehindAddr(addrs []*net.UDPAddr, node *Node) error {
 			return err
 		}
 
-		p := waitPacket(id, hello, node, dest, 10*time.Second)
+		p := waitPacket(id, hello, node, dest)
 		if p != nil {
 			log.Print("NOOPE")
 			return nil
@@ -468,7 +469,7 @@ func RetrieveEntry(hash [32]byte, peer string, addr *net.UDPAddr, node *Node) (*
 		}
 		log.Printf("Sent getDatum(%x) with id=%d to address %s", hashes[0], id, addr)
 
-		packet := waitPacket(id, datum, node, addr, 20*time.Second) // TODO: check if packet is valid
+		packet := waitPacket(id, datum, node, addr) // TODO: check if packet is valid
 		if packet == nil {
 			if ContactNodeBehindNat(peer, node) != nil {
 				return nil, ErrNotFound // TODO: return error

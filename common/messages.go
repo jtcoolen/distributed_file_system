@@ -9,8 +9,8 @@ import (
 	"net"
 )
 
-var headerLength = 7
-var extensionsLength = 4
+const headerLength int = 7
+const extensionsLength int = 4
 
 func MakeHello(id uint32, node *Node) ([]byte, error) {
 	nameLength := len(node.Name)

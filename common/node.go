@@ -19,6 +19,12 @@ type SessionKey struct {
 	ready      bool
 }
 
+type PeerInfo struct {
+	addresses []*net.UDPAddr
+	publicKey [64]byte
+	//rootHash  [32]byte
+}
+
 type Node struct {
 	Name                 string
 	Port                 int
@@ -33,7 +39,7 @@ type Node struct {
 	Id                   uint32
 	// Maps a peer's name with an ECDH session key:
 	SessionKeys     map[string]SessionKey
-	RegisteredPeers map[string][]*net.UDPAddr
+	RegisteredPeers map[string]*PeerInfo
 }
 
 func RefreshRegisteredPeers(node *Node) {
@@ -41,10 +47,13 @@ func RefreshRegisteredPeers(node *Node) {
 	if err != nil {
 		return
 	}
+
 	for _, p := range peers {
-		delete(node.RegisteredPeers, string(p))
-		node.RegisteredPeers[string(p)] = make([]*net.UDPAddr, 10)
-		addrs, err := GetPeerAddresses(string(p))
+		peerName := string(p)
+		delete(node.RegisteredPeers, peerName)
+		node.RegisteredPeers[peerName] = &PeerInfo{addresses: nil, publicKey: [64]byte{}}
+		node.RegisteredPeers[peerName].addresses = make([]*net.UDPAddr, 10)
+		addrs, err := GetPeerAddresses(peerName)
 		if err != nil {
 			return
 		}
@@ -52,24 +61,31 @@ func RefreshRegisteredPeers(node *Node) {
 			log.Printf("Addr = %s", string(a))
 			dest, err := net.ResolveUDPAddr("udp", string(a))
 			if err != nil {
-				return
+				continue
 			}
-			node.RegisteredPeers[string(p)] = append(node.RegisteredPeers[string(p)], dest)
+			node.RegisteredPeers[peerName].addresses = append(node.RegisteredPeers[peerName].addresses, dest)
 		}
+		key, err := GetPeerKey(peerName)
+		if err != nil {
+			continue
+		}
+		var pk [64]byte
+		copy(pk[:], key)
+		node.RegisteredPeers[peerName].publicKey = pk
 	}
 }
 
-func FindPeerFromAddr(addr *net.UDPAddr, node *Node) (string, error) {
-	for peer, peerAddrs := range node.RegisteredPeers {
-		for _, pAddr := range peerAddrs {
+func FindPeerFromAddr(addr *net.UDPAddr, node *Node) (string, *PeerInfo, error) {
+	for peerName, peerInfo := range node.RegisteredPeers {
+		for _, pAddr := range peerInfo.addresses {
 			if pAddr != nil {
 				if addr.IP.Equal(pAddr.IP) && addr.Port == pAddr.Port {
-					return peer, nil
+					return peerName, peerInfo, nil
 				}
 			}
 		}
 	}
-	return "", ErrNotFound
+	return "", nil, ErrNotFound
 }
 
 func NewId(node *Node) uint32 {
@@ -103,7 +119,7 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 	if !(packetType == 1 && packetLength == 0) {
 		if len(packet)-int(headerLength) != int(packetLength) {
 			if len(packet)-headerLength != int(packetLength)+SignatureLength {
-				log.Printf("Discarded incomming message: wrong size", len(packet)-int(headerLength) != int(packetLength),
+				log.Print("Discarded incomming message: wrong size", len(packet)-int(headerLength) != int(packetLength),
 					(len(packet)-headerLength != int(packetLength)+SignatureLength))
 				reply, err := makeError(id, "wrong size", node)
 				if err == nil {
@@ -112,6 +128,22 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 				}
 				return
 			}
+			var sig [SignatureLength]byte
+			copy(sig[:], packet[:len(packet)-SignatureLength])
+			_, info, err := FindPeerFromAddr(addr, node)
+			if err != nil {
+				RefreshRegisteredPeers(node)
+				_, info, err = FindPeerFromAddr(addr, node)
+				if err != nil {
+					return
+				}
+			}
+			if !VerifyECDSASignature(info.publicKey, sig, packet[:headerLength+int(packetLength)]) {
+				log.Print("Wrong signature")
+				return
+			}
+			log.Print("Good signature")
+
 		}
 	}
 
@@ -237,10 +269,10 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 		if err == nil {
 			node.Conn.WriteToUDP(dhkey, addr)
 
-			peer, err := FindPeerFromAddr(addr, node)
+			peer, _, err := FindPeerFromAddr(addr, node)
 			if err != nil {
 				RefreshRegisteredPeers(node)
-				peer, err = FindPeerFromAddr(addr, node)
+				peer, _, err = FindPeerFromAddr(addr, node)
 				if err != nil {
 					return
 				}
@@ -255,7 +287,7 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 		var formattedPublicKey [2 * 66]byte
 		copy(formattedPublicKey[:], packet[headerLength:])
 		RefreshRegisteredPeers(node)
-		peer, err := FindPeerFromAddr(addr, node)
+		peer, _, err := FindPeerFromAddr(addr, node)
 		if err != nil {
 			log.Printf("Error FindPeerFromAddr !!!!!! %s", err)
 			delete(node.SessionKeys, peer)
@@ -314,7 +346,7 @@ func ReceiveIncomingMessages(node *Node) {
 }
 
 func waitPacket(id uint32, packet []byte, node *Node, addr *net.UDPAddr) []byte { // TODO: return error after max retries
-	var delay time.Duration = 100000000
+	var delay time.Duration = 100 * time.Millisecond
 	limit := time.After(delay)
 	i := 0
 
@@ -325,7 +357,7 @@ func waitPacket(id uint32, packet []byte, node *Node, addr *net.UDPAddr) []byte 
 	v := node.PendingPacketQueries[id]
 
 	for {
-		if i == 4 {
+		if i == 10 {
 			defer delete(node.PendingPacketQueries, id)
 			return nil
 		}

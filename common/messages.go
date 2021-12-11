@@ -286,10 +286,10 @@ func MakeDHKey(id uint32, formattedPublicKey [2 * 66]byte, node *Node) ([]byte, 
 }
 
 func makePacket(packet []byte, addr *net.UDPAddr, node *Node) ([]byte, error) {
-	peer, err := FindPeerFromAddr(addr, node)
+	peer, _, err := FindPeerFromAddr(addr, node)
 	if err != nil {
 		RefreshRegisteredPeers(node)
-		peer, err = FindPeerFromAddr(addr, node)
+		peer, _, err = FindPeerFromAddr(addr, node)
 		if err != nil {
 			return nil, err
 		}
@@ -345,10 +345,10 @@ func decryptAndAuthenticatePacket(packet []byte, addr *net.UDPAddr, node *Node) 
 	if packet[4] != EncryptedPacketType {
 		return packet, nil
 	}
-	peer, err := FindPeerFromAddr(addr, node)
+	peer, _, err := FindPeerFromAddr(addr, node)
 	if err != nil {
 		RefreshRegisteredPeers(node)
-		peer, err = FindPeerFromAddr(addr, node)
+		peer, _, err = FindPeerFromAddr(addr, node)
 		if err != nil {
 			return nil, err
 		}

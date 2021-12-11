@@ -35,10 +35,20 @@ func SignECDSA(privateKey *ecdsa.PrivateKey, data []byte) ([]byte, error) {
 	return signature, nil
 }
 
-func VerifyECDSASignature(publicKey *ecdsa.PublicKey, signature [64]byte, data []byte) bool {
+func VerifyECDSASignature(publicKey [64]byte, signature [64]byte, data []byte) bool {
 	var r, s big.Int
+	var x, y big.Int
+	x.SetBytes(publicKey[:32])
+	y.SetBytes(publicKey[32:])
+	pk := ecdsa.PublicKey{
+		Curve: elliptic.P256(),
+		X:     &x,
+		Y:     &y,
+	}
+	pk.X.SetBytes(publicKey[:32])
+	pk.Y.SetBytes(publicKey[32:])
 	r.SetBytes(signature[:32])
 	s.SetBytes(signature[32:])
 	hashed := sha256.Sum256(data)
-	return ecdsa.Verify(publicKey, hashed[:], &r, &s)
+	return ecdsa.Verify(&pk, hashed[:], &r, &s)
 }

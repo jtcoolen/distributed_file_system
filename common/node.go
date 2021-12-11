@@ -98,9 +98,6 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 	log.Printf("packetLen=%d , len(packet)= %d , len(packet)-headerLength=%d", packetLength, len(packet), len(packet)-headerLength)
 	log.Printf("packet type=%d", packetType)
 
-	if packetType == 254 {
-		log.Printf("Error: %s from %s", string(packet[headerLength:headerLength+int(packetLength)]), addr)
-	}
 	// TODO: check packet size (prevent buffer overflows from occurring)
 	// Special case: peer does not have a public key:
 	if !(packetType == 1 && packetLength == 0) {
@@ -137,7 +134,7 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 		p[4] = pType
 		binary.BigEndian.PutUint16(p[5:headerLength], uint16(len(body)))
 		copy(p[headerLength:], body)
-		copy(p[headerLength+len(body):], packet[packetLength-SignatureLength:])
+		//copy(p[headerLength+len(body):], packet[packetLength-SignatureLength:])
 		// update packet length
 		packetLength = binary.BigEndian.Uint16(p[5:headerLength])
 		log.Printf("packet len=%d", packetLength)

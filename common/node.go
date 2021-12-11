@@ -490,7 +490,7 @@ func RetrieveEntry(hash [32]byte, peer string, addr *net.UDPAddr, node *Node) (*
 		var pHash [32]byte
 		copy(pHash[:], packet[headerLength:headerLength+HashLength])
 		if pHash != sha256.Sum256(packet[headerLength+HashLength:headerLength+int(packetLength)]) {
-			log.Printf("Directory: Hash Mismatch")
+			log.Printf("Hash Mismatch")
 			return nil, ErrHashMismatch
 		}
 

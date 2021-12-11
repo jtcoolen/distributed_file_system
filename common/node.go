@@ -498,7 +498,10 @@ func RetrieveEntry(hash [32]byte, peer string, addr *net.UDPAddr, node *Node) (*
 			len := int(packetLength) - HashLength - 1
 			// TODO Minoo: check hashes
 			currentEntry.Data = make([]byte, len)
-			if currentEntry.Hash != ComputeHash(currentEntry) {
+			dataHash := make([]byte, 1+packetLength)
+			dataHash[0] = 2
+			copy(dataHash[1:], packet[headerLength:headerLength+int(packetLength)])
+			if h != sha256.Sum256(dataHash) {
 				log.Printf("Chunk: Hash Mismatch")
 				return nil, ErrHashMismatch
 			}
@@ -511,7 +514,10 @@ func RetrieveEntry(hash [32]byte, peer string, addr *net.UDPAddr, node *Node) (*
 				copy(h[:], packet[headerLength+HashLength+1+i*32:headerLength+HashLength+1+i*32+32])
 				hashes = append(hashes, h)
 				newChunk := Entry{Chunk, "", h, nil, nil}
-				if h != ComputeHash(&newChunk) {
+				dataHash := make([]byte, 1+packetLength)
+				dataHash[0] = 2
+				copy(dataHash[1:], packet[headerLength:headerLength+int(packetLength)])
+				if h != sha256.Sum256(dataHash) {
 					log.Printf("Tree: Hash Mismatch")
 					return nil, ErrHashMismatch
 				}
@@ -528,7 +534,10 @@ func RetrieveEntry(hash [32]byte, peer string, addr *net.UDPAddr, node *Node) (*
 				name = bytes.Split(name, b[:])[0] // TODO: might be buggy
 				hashes = append(hashes, h)
 				newDir := Entry{Directory, string(name), h, nil, nil}
-				if h != ComputeHash(&newDir) {
+				dataHash := make([]byte, 1+packetLength)
+				dataHash[0] = 2
+				copy(dataHash[1:], packet[headerLength:headerLength+int(packetLength)])
+				if h != sha256.Sum256(dataHash) {
 					log.Printf("Directory: Hash Mismatch")
 					return nil, ErrHashMismatch
 				}

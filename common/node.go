@@ -189,6 +189,11 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 			log.Printf("Datum initialization failure")
 			break
 		}
+		reply, err = makePacket(reply, addr, node)
+		if err != nil {
+			log.Print(err)
+			return
+		}
 
 		if err == nil {
 			node.Conn.WriteToUDP(reply, addr)

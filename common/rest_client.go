@@ -109,15 +109,16 @@ func GetPeerRoot(peer string) ([32]byte, error) {
 	if err != nil {
 		return h, err
 	}
-	if len(body) != sha256.Size {
-		return h, ErrWrongHashSize
-	}
+
 	switch r.StatusCode {
 	case 404:
-		return h, ErrNotFound
+		return h, ErrPeerNotFound
 	case 204:
 		return h, ErrNoRoot
 	default:
+		if len(body) != sha256.Size {
+			return h, ErrWrongHashSize
+		}
 		copy(h[:], body[:32])
 		return h, nil
 	}

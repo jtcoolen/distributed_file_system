@@ -118,8 +118,6 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 		}
 	}
 
-	var err error
-
 	if packetType == EncryptedPacketType {
 		body, err := decryptAndAuthenticatePacket(packet, addr, node)
 		if err != nil {

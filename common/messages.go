@@ -368,6 +368,7 @@ func decryptAndAuthenticatePacket(packet []byte, addr *net.UDPAddr, node *Node) 
 			log.Printf("Decryption failure! %s", err)
 			return nil, ErrMakePacket
 		}
+		log.Printf("len b = %d", len(body))
 		return body, nil
 	}
 	log.Printf("No session key found!")

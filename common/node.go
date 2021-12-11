@@ -98,40 +98,49 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 	log.Printf("packetLen=%d , len(packet)= %d , len(packet)-headerLength=%d", packetLength, len(packet), len(packet)-headerLength)
 	log.Printf("packet type=%d", packetType)
 
-	if packetType == 254 {
-		log.Printf("Error: %s from %s", string(packet[headerLength:headerLength+int(packetLength)]), addr)
-	}
 	// TODO: check packet size (prevent buffer overflows from occurring)
 	// Special case: peer does not have a public key:
 	if !(packetType == 1 && packetLength == 0) {
-		if len(packet)-int(headerLength) != int(packetLength) { // || (len(packet)-headerLength != int(packetLength)+SignatureLength) {
-			log.Printf("Discarded incomming message: wrong size", len(packet)-int(headerLength) != int(packetLength),
-				(len(packet)-headerLength != int(packetLength)+SignatureLength))
-			reply, err := makeError(id, "wrong size", node)
-			if err == nil {
-				node.Conn.WriteToUDP(reply, addr)
+		if len(packet)-int(headerLength) != int(packetLength) {
+			if len(packet)-headerLength != int(packetLength)+SignatureLength {
+				log.Printf("Discarded incomming message: wrong size", len(packet)-int(headerLength) != int(packetLength),
+					(len(packet)-headerLength != int(packetLength)+SignatureLength))
+				reply, err := makeError(id, "wrong size", node)
+				if err == nil {
+					node.Conn.WriteToUDP(reply, addr)
+					return
+				}
 				return
 			}
-			return
 		}
 	}
 
-	var err error
-
 	if packetType == EncryptedPacketType {
-		packet, err = decryptAndAuthenticatePacket(packet, addr, node)
-		// Retrieve packet type
-		packetType = packet[0]
-		packet = packet[1:]
+		body, err := decryptAndAuthenticatePacket(packet, addr, node)
 		if err != nil {
 			log.Printf("Decryption error: %s: aborting", err)
 			return
 		}
+		log.Printf("len body %d", len(body))
+
+		// Retrieve packet type
+		pType := body[0]
+		body = body[1:]
+
 		log.Printf("Successful decryption!")
+
+		p := make([]byte, headerLength+len(body)+SignatureLength)
+		copy(p, packet[:headerLength])
+		p[4] = pType
+		binary.BigEndian.PutUint16(p[5:headerLength], uint16(len(body)))
+		copy(p[headerLength:], body)
+		copy(p[headerLength+len(body):], packet[len(packet)-SignatureLength:])
 		// update packet length
-		packetLength = binary.BigEndian.Uint16(packet[5:headerLength])
+		packetLength = binary.BigEndian.Uint16(p[5:headerLength])
 		log.Printf("packet len=%d", packetLength)
-		log.Printf("packet len2=%d", packetLength-SignatureLength-nonceLength-1-uint16(headerLength))
+		//log.Printf("packet len2=%d", packetLength-SignatureLength-nonceLength-1-uint16(headerLength))
+		packet = p
+		packetType = pType
 	}
 
 	switch packetType {
@@ -179,6 +188,11 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 		if err != nil {
 			log.Printf("Datum initialization failure")
 			break
+		}
+		reply, err = makePacket(reply, addr, node)
+		if err != nil {
+			log.Print(err)
+			return
 		}
 
 		if err == nil {
@@ -416,8 +430,8 @@ func ContactNodeBehindNat(peer string, node *Node) error {
 	return ContactNodeBehindAddr(addrs, node)
 }
 
-func RetrieveEntry(hash [32]byte, peer string, addr *net.UDPAddr, node *Node) Entry {
-	root := Entry{Directory, "", hash, nil, nil}
+func RetrieveEntry(hash [32]byte, peer string, addr *net.UDPAddr, node *Node) (*Entry, error) {
+	root := &Entry{Directory, "", hash, nil, nil}
 	var currentEntry *Entry
 
 	hashes := make([][32]byte, 0)
@@ -429,7 +443,7 @@ func RetrieveEntry(hash [32]byte, peer string, addr *net.UDPAddr, node *Node) En
 		if ok {
 			log.Printf("Using cached Entry(%x)", hashes[0])
 			e := cachedEntry.(Entry)
-			currentEntry = findEntry(hashes[0], &root)
+			currentEntry = findEntry(hashes[0], root)
 			hashes = hashes[1:] // Remove processed hash
 			*currentEntry = e
 			continue
@@ -438,43 +452,42 @@ func RetrieveEntry(hash [32]byte, peer string, addr *net.UDPAddr, node *Node) En
 		datum, err := makeGetDatum(id, hashes[0], node)
 		if err != nil {
 			log.Print(err)
-			return root
+			return nil, ErrNotFound
 		}
 
 		datum, err = makePacket(datum, addr, node)
 		if err != nil {
 			log.Print(err)
-			return root
+			return nil, ErrNotFound
 		}
 
 		_, err = node.Conn.WriteToUDP(datum, addr)
 		if err != nil {
 			log.Print(err)
-			return root
+			return nil, ErrNotFound
 		}
 		log.Printf("Sent getDatum(%x) with id=%d to address %s", hashes[0], id, addr)
 
 		packet := waitPacket(id, datum, node, addr, 20*time.Second) // TODO: check if packet is valid
 		if packet == nil {
 			if ContactNodeBehindNat(peer, node) != nil {
-				return root // TODO: return error
+				return nil, ErrNotFound // TODO: return error
 			}
 		}
 		if len(packet) == 0 {
 			log.Print("Got packet of length 0")
-			return root
+			return nil, ErrNotFound
 		}
 		if packet[4] == NoDatumType {
 			log.Print("No Datum!")
-			return root // Return error
+			return nil, ErrNotFound // Return error
 		}
 
-		currentEntry = findEntry(hashes[0], &root)
+		currentEntry = findEntry(hashes[0], root)
 
 		hashes = hashes[1:] // Remove processed hash
 
 		packetLength := binary.BigEndian.Uint16(packet[5:headerLength])
-		// TODO: check if announced packet size is correct, or detect if a datagram contains multiple messages
 
 		kind := packet[headerLength+HashLength]
 		var h [32]byte
@@ -524,6 +537,6 @@ func RetrieveEntry(hash [32]byte, peer string, addr *net.UDPAddr, node *Node) En
 		}
 	}
 	log.Printf("Downloaded Entry(%x)", currentEntry.Hash)
-	cache(&root, node)
-	return root
+	cache(root, node)
+	return root, nil
 }

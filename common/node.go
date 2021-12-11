@@ -104,15 +104,17 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 	// TODO: check packet size (prevent buffer overflows from occurring)
 	// Special case: peer does not have a public key:
 	if !(packetType == 1 && packetLength == 0) {
-		if len(packet)-int(headerLength) != int(packetLength) { // || (len(packet)-headerLength != int(packetLength)+SignatureLength) {
-			log.Printf("Discarded incomming message: wrong size", len(packet)-int(headerLength) != int(packetLength),
-				(len(packet)-headerLength != int(packetLength)+SignatureLength))
-			reply, err := makeError(id, "wrong size", node)
-			if err == nil {
-				node.Conn.WriteToUDP(reply, addr)
+		if len(packet)-int(headerLength) != int(packetLength) {
+			if len(packet)-headerLength != int(packetLength)+SignatureLength {
+				log.Printf("Discarded incomming message: wrong size", len(packet)-int(headerLength) != int(packetLength),
+					(len(packet)-headerLength != int(packetLength)+SignatureLength))
+				reply, err := makeError(id, "wrong size", node)
+				if err == nil {
+					node.Conn.WriteToUDP(reply, addr)
+					return
+				}
 				return
 			}
-			return
 		}
 	}
 

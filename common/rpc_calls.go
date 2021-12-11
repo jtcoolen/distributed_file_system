@@ -220,12 +220,14 @@ func (t *Node) UpdateDirectory(path string, reply *string) error {
 	t.ExportedDirectory.Hash = ComputeHash(t.ExportedDirectory)
 
 	packet, err := makeRoot(NewId(t), t.ExportedDirectory.Hash, t)
-	for _, addr := range t.BootstrapAddresses {
-		if err == nil {
+
+	if err == nil {
+		for _, addr := range t.BootstrapAddresses {
+			log.Printf("addr : %s \n", addr)
 			t.Conn.WriteToUDP(packet, addr)
-		} else {
-			log.Printf("%s", err)
 		}
+	} else {
+		log.Printf("%s", err)
 	}
 
 	log.Printf("My new root hash is %x", ComputeHash(t.ExportedDirectory))

@@ -215,8 +215,31 @@ func (t *Node) UpdateDirectory(path string, reply *string) error {
 	}
 
 	newFile.Hash = ComputeHash(&newFile)
-	t.ExportedDirectory.Children = append(t.ExportedDirectory.Children, &newFile)
-	t.ExportedDirectory.Hash = ComputeHash(t.ExportedDirectory)
+
+	oldDir := t.ExportedDirectory
+	newDir := Entry{
+		Type:     oldDir.Type,
+		Name:     oldDir.Name,
+		Hash:     oldDir.Hash,
+		Children: append(oldDir.Children, &newFile),
+		Data:     oldDir.Data,
+	}
+
+	newDir.Hash = ComputeHash(&newDir)
+
+	*t = Node{Name: t.Name,
+		PrivateKey:           t.PrivateKey,
+		PublicKey:            t.PublicKey,
+		FormattedPublicKey:   t.FormattedPublicKey,
+		Conn:                 t.Conn,
+		BootstrapAddresses:   t.BootstrapAddresses,
+		PendingPacketQueries: t.PendingPacketQueries,
+		CachedEntries:        t.CachedEntries,
+		ExportedDirectory:    &newDir,
+		Id:                   t.Id,
+		SessionKeys:          t.SessionKeys,
+		RegisteredPeers:      t.RegisteredPeers}
+
 	log.Printf("My new root hash is %x", ComputeHash(t.ExportedDirectory))
 
 	return nil

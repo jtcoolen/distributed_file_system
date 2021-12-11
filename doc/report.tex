@@ -1,0 +1,217 @@
+\documentclass[12pt,a4paper]{article}
+
+\usepackage[USenglish]{babel}
+
+
+\usepackage{amsmath}
+\usepackage{mathspec}    
+
+\usepackage{fontspec}
+\usepackage{csquotes}
+\setmainfont[
+BoldFont          = * Bold ,
+Ligatures=TeX]{Neue Haas Unica Pro}
+\setsansfont[
+BoldFont          = * Bold ,
+Ligatures=TeX]{Neue Haas Unica Pro}
+%\setmonofont[
+%BoldFont          = * Bold ,
+%Ligatures=TeX]{Neue Haas Unica Pro}
+\setmonofont{Courier Prime}[Scale=1]
+
+\usepackage[noitalic,noendash,symbolgreek]{mathastext} 
+\PassOptionsToPackage{hyphens}{url}\usepackage{hyperref}
+
+
+\usepackage{fancyvrb}
+\usepackage{fvextra}
+
+\usepackage{xcolor}
+\hypersetup{
+  breaklinks,
+    colorlinks,
+    linkcolor={red!50!black},
+    citecolor={blue!50!black},
+    urlcolor={blue!80!black}
+  }
+  
+\usepackage[hyphens]{url}
+
+\usepackage{setspace}
+\setstretch{1.23}
+
+
+\usepackage{ragged2e}
+\usepackage{microtype}[final,tracking=true,kerning=true,spacing=true,protrusion=true,factor=1000]
+
+\usepackage{geometry} 
+\geometry{
+	a4paper,
+	left=1in,
+	top=1in,
+	bottom=1in,
+	right=1in
+      }
+      
+
+\tolerance=1
+\emergencystretch=\maxdimen
+\hyphenpenalty=10000
+\hbadness=10000
+
+\usepackage{bytefield}
+
+  
+\def\UrlBreaks{\do\/\do-}
+
+
+\usepackage{xurl}    
+
+\usepackage{caption}
+
+\title{Internet Protocols Project: Distributed Filesystem}
+
+\author{Julien Coolen and Minoo Farsiabi}
+
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+
+\tableofcontents
+\pagebreak
+
+\section{Usage}
+
+\subsection{Start the node executable}
+Enter in the shell \texttt{go run dfs/node <peer\_name>}.
+
+\subsection{Start the RPC HTTP client}
+
+\subsubsection{List registered peers}
+Enter \texttt{go run dfs/rpc\_client peers}
+
+\subsubsection{List files}
+
+
+Examples:
+\begin{Verbatim}[breaklines=true, breakanywhere=true]
+$ go run dfs/rpc_client ls -path / -peer jch.irif.fr
+file: README.txt (50 bytes)
+directory: documents (153177 bytes)
+directory: images (224525 bytes)
+
+$ go run dfs/rpc_client ls -path /documents -peer jch.irif.fr
+file: internet1.pdf (44173 bytes)
+file: internet2.pdf (54147 bytes)
+file: internet3.pdf (54857 bytes)
+\end{Verbatim}
+
+\subsubsection{Download files}
+Examples:
+
+\begin{Verbatim}[breaklines=true, breakanywhere=true]
+go run dfs/rpc_client download  -peer jch.irif.fr -hash <hash>
+
+go run dfs/rpc_client downloadFromPath -path /documents -peer jch.irif.fr
+\end{Verbatim}
+\section{Architecture}
+A thread listens to incoming packets, parses them, and notifies other threads that the message was received through a callback mechanism. The following hash map \texttt{PendingPacketQueries map[uint32]chan []byte} holds the pending queries, indexed by the transaction ID. Each thread is notified when the packet is returned thanks to Go's channels.
+
+\section{Extensions}
+
+
+\subsection{ECDSA Signatures}
+
+\subsection{Caching}
+We store the nodes of the Merkle tree in a LRU (thus, bounded) cache for later retrieval.
+
+\subsection{NAT Traversal}
+We implement the protocol described the project brief. %Here is a tcpdump trace a node behind a NAT contacting another one behind a NAT:
+
+\begin{Verbatim}[breaklines=true, breakanywhere=true]
+2021/12/04 17:29:59 Addr = 78.199.36.29:8088
+2021/12/04 17:29:59 Got addr = 78.199.36.29:8088
+2021/12/04 17:30:00 limit reached
+2021/12/04 17:30:09 stop
+2021/12/04 17:30:09 cannot contact addr 78.199.36.29:8088
+2021/12/04 17:30:09 Sent nat traversal request to Juliusz's peer
+2021/12/04 17:30:09 Hello from 78.199.36.29:8088
+2021/12/04 17:30:10 Sent hello to 78.199.36.29:8088
+2021/12/04 17:30:10 HelloReply from 78.199.36.29:8088
+\end{Verbatim}
+
+        
+\subsection{HTTP RPC Server and Client}\label{RPC}
+The peer executable, which we call node (a node as part of the peer-to-peer network), can be queried thanks to RPC HTTP calls. Users can send queries to the node using the client executable.
+
+\subsection{Extension 4: Session Key}
+We create a session key for two peers using the Diffie-Hellman key exchange protocol on the P-256 or P-521 curve. To prevent man-in-the-middle attacks from happening, we require the key exchange to be authenticated using ECDSA signatures.
+
+According to the protocol, the extension 4 defines two packet numbers 68 and 196, which we define as follows:
+
+\begin{enumerate}
+\item Packet type 68 (64+4) DHKeyRequest. We use the standard generator for the P-256 curve (or P-512), as given in \url{https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.186-4.pdf#page=100}.
+  \item Packet type 196 (192+4) DHKey($public\_key=g * s$), for the standard generator $g$ and the private key $s$.
+  \end{enumerate}
+
+ One peer A sends a DHKeyRequest packet to an other peer B, which replies back with a DHKey($g * s_B$). Upon receiving the latter packet, A sends a DHKey($g * s_A$), thereby establishing the key session $(g * s_A) * s_B$.
+
+ %The key session aren't used for authentication (MACs), but for encryption.
+
+ \subsection{Extension 5: Symmetric Encryption}
+ Once two peers established a common secret session key in an authenticated way, they can encrypt their packets using a symmetric encryption algorithm.
+
+ We present two encrypt-then-authenticate schemes, and implement the latter one:
+
+ \begin{enumerate}
+    \item We use as seen in class AES-128 bit in CBC mode, for the body of an already defined packet and its type (1 byte long):
+ 
+ \[
+     \begin{array}{lll}
+       m& =&type \ || \ body \ || \ fingerprint(public\_key)\\
+ s&=&encrypt(m) \ || \ MAC(m,private\_key)\\
+       s'&=&s \ || \ Sign(s)
+\end{array}
+\]
+
+          We do a combination of encrypt-then-sign and encrypt-then-MAC. In order to prevent an attacker from replacing the signature with his own, we need to ensure that the plaintext is tied to the signature. Hence we include in the plaintext a fingerprint of the public key.
+
+
+\item The previous approach can be simplified with the use of an Authenticated Encryption with Associated Data (AEAD). This algorithm combines a cipher and a MAC using a single key. We use AES-GCM, which is an AEAD. Indeed, the GCM mode is parallelized like CTR but also does MAC. According to Cloudflare's blog: ``Using a dedicated AEAD reduces the dangers of bad combinations of ciphers and MACs, and other mistakes, such as using related keys for encryption and authentication.
+  Given the many vulnerabilities related to the use of AES-CBC with HMAC, and the weakness of RC4, AES-GCM is the de-facto secure standard on the web right now, as the only IETF-approved AEAD to use with TLS at the moment''\footnote{\url{https://blog.cloudflare.com/go-crypto-bridging-the-performance-gap/}}.
+  Packets are encrypted-then-authenticated, and signed, as follows:
+ 
+ \[
+     \begin{array}{lll}
+       m& =&type \ || \ body\\
+ s&=&encrypt(m,nonce,additional\_data=Sign(m))\\
+       s'&=&s \ || \ Sign(m)
+\end{array}
+\]
+This method has some advantages over the previous method:
+\begin{enumerate}\item the signature proves the same thing as in the unencrypted version (signature of the plaintext, and not of the ciphertext)
+\item we also MAC the signature
+\item we bind the signature to its message thanks to the additional\_data field
+\end{enumerate}
+This does not fall into cryptographic doom since the authentication tag is checked before (or in Go's library, concurrently with) the decryption.
+
+          The structure of an encrypted packet is given in figure \ref{fig:x}.
+
+          \begin{figure}[h]\centering
+    \begin{bytefield}[bitwidth=1em]{32}
+        \bitheader{0-31} \\
+            \bitbox{32}{Id}\\ \bitbox{8}{Type} & \bitbox{16}{Length}
+            & \bitbox{8}{s ...}\\
+            & \bitbox{20}{s (continued) ...}
+             & \bitbox{12}{Nonce}\\ \bitbox{32}{Signature (64 bytes) ...}
+          \end{bytefield}
+          \caption[]{}
+          \label{fig:x}
+        \end{figure}
+
+\end{enumerate}
+
+\end{document}

@@ -128,22 +128,6 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 				}
 				return
 			}
-			var sig [SignatureLength]byte
-			copy(sig[:], packet[:len(packet)-SignatureLength])
-			_, info, err := FindPeerFromAddr(addr, node)
-			if err != nil {
-				RefreshRegisteredPeers(node)
-				_, info, err = FindPeerFromAddr(addr, node)
-				if err != nil {
-					return
-				}
-			}
-			if !VerifyECDSASignature(info.publicKey, sig, packet[:headerLength+int(packetLength)]) {
-				log.Print("Wrong signature")
-				return
-			}
-			log.Print("Good signature")
-
 		}
 	}
 
@@ -173,6 +157,27 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 		//log.Printf("packet len2=%d", packetLength-SignatureLength-nonceLength-1-uint16(headerLength))
 		packet = p
 		packetType = pType
+	}
+
+	if len(packet)-headerLength == int(packetLength)+SignatureLength {
+		var sig [SignatureLength]byte
+		copy(sig[:], packet[headerLength+int(packetLength):])
+		_, info, err := FindPeerFromAddr(addr, node)
+		if err != nil {
+			RefreshRegisteredPeers(node)
+			_, info, err = FindPeerFromAddr(addr, node)
+			if err != nil {
+				return
+			}
+		}
+		log.Printf("PK=%x", info.publicKey)
+		log.Printf("sig=%x", sig)
+		log.Printf("packet=%x", packet[:headerLength+int(packetLength)])
+		if !VerifyECDSASignature(info.publicKey, sig, packet[:headerLength+int(packetLength)]) {
+			log.Print("Wrong signature")
+			return
+		}
+		log.Print("Good signature")
 	}
 
 	switch packetType {
@@ -346,9 +351,9 @@ func ReceiveIncomingMessages(node *Node) {
 }
 
 func waitPacket(id uint32, packet []byte, node *Node, addr *net.UDPAddr) []byte { // TODO: return error after max retries
-	var delay time.Duration = 100 * time.Millisecond
+	var delay time.Duration = 200 * time.Millisecond
 	limit := time.After(delay)
-	i := 0
+	stopAt := time.After(10 * time.Second)
 
 	if node.PendingPacketQueries[id] == nil {
 		node.PendingPacketQueries[id] = make(chan []byte)
@@ -357,17 +362,18 @@ func waitPacket(id uint32, packet []byte, node *Node, addr *net.UDPAddr) []byte 
 	v := node.PendingPacketQueries[id]
 
 	for {
-		if i == 10 {
-			defer delete(node.PendingPacketQueries, id)
-			return nil
-		}
 		select {
 		case out := <-v:
 			defer delete(node.PendingPacketQueries, id)
 			return out
 
+		case <-stopAt:
+			log.Print("Timeout reached")
+			defer delete(node.PendingPacketQueries, id)
+			return nil
+
 		case <-limit:
-			i++
+			log.Print("Limit reached")
 			_, err := node.Conn.WriteToUDP(packet, addr)
 			if err != nil {
 				log.Print(err)

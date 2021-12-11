@@ -418,8 +418,8 @@ func ContactNodeBehindNat(peer string, node *Node) error {
 	return ContactNodeBehindAddr(addrs, node)
 }
 
-func RetrieveEntry(hash [32]byte, peer string, addr *net.UDPAddr, node *Node) Entry {
-	root := Entry{Directory, "", hash, nil, nil}
+func RetrieveEntry(hash [32]byte, peer string, addr *net.UDPAddr, node *Node) (*Entry, error) {
+	root := &Entry{Directory, "", hash, nil, nil}
 	var currentEntry *Entry
 
 	hashes := make([][32]byte, 0)
@@ -431,7 +431,7 @@ func RetrieveEntry(hash [32]byte, peer string, addr *net.UDPAddr, node *Node) En
 		if ok {
 			log.Printf("Using cached Entry(%x)", hashes[0])
 			e := cachedEntry.(Entry)
-			currentEntry = findEntry(hashes[0], &root)
+			currentEntry = findEntry(hashes[0], root)
 			hashes = hashes[1:] // Remove processed hash
 			*currentEntry = e
 			continue
@@ -440,38 +440,38 @@ func RetrieveEntry(hash [32]byte, peer string, addr *net.UDPAddr, node *Node) En
 		datum, err := makeGetDatum(id, hashes[0], node)
 		if err != nil {
 			log.Print(err)
-			return root
+			return nil, ErrNotFound
 		}
 
 		datum, err = makePacket(datum, addr, node)
 		if err != nil {
 			log.Print(err)
-			return root
+			return nil, ErrNotFound
 		}
 
 		_, err = node.Conn.WriteToUDP(datum, addr)
 		if err != nil {
 			log.Print(err)
-			return root
+			return nil, ErrNotFound
 		}
 		log.Printf("Sent getDatum(%x) with id=%d to address %s", hashes[0], id, addr)
 
 		packet := waitPacket(id, datum, node, addr, 20*time.Second) // TODO: check if packet is valid
 		if packet == nil {
 			if ContactNodeBehindNat(peer, node) != nil {
-				return root // TODO: return error
+				return nil, ErrNotFound // TODO: return error
 			}
 		}
 		if len(packet) == 0 {
 			log.Print("Got packet of length 0")
-			return root
+			return nil, ErrNotFound
 		}
 		if packet[4] == NoDatumType {
 			log.Print("No Datum!")
-			return root // Return error
+			return nil, ErrNotFound // Return error
 		}
 
-		currentEntry = findEntry(hashes[0], &root)
+		currentEntry = findEntry(hashes[0], root)
 
 		hashes = hashes[1:] // Remove processed hash
 
@@ -512,6 +512,6 @@ func RetrieveEntry(hash [32]byte, peer string, addr *net.UDPAddr, node *Node) En
 		}
 	}
 	log.Printf("Downloaded Entry(%x)", currentEntry.Hash)
-	cache(&root, node)
-	return root
+	cache(root, node)
+	return root, nil
 }

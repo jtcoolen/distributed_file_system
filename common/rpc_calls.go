@@ -38,8 +38,8 @@ func (t *Node) RetrieveEntry(args *RetrieveEntryArgs, reply *Entry) error {
 		if ContactNodeBehindAddr(dests, t) != nil {
 			continue
 		}
-		*reply = RetrieveEntry(args.Hash, args.Peer, dest, t)
-		if reply.Type == Directory && reply.Name == "" && reply.Children == nil && reply.Data == nil {
+		reply, err = RetrieveEntry(args.Hash, args.Peer, dest, t)
+		if err != nil {
 			return ErrNotFound
 		}
 	}
@@ -69,7 +69,10 @@ func (t *Node) RetrieveEntryByPath(args *RetrieveEntryByPathArgs, reply *Entry) 
 		if ContactNodeBehindAddr(dests, t) != nil {
 			continue
 		}
-		rootEntry := RetrieveEntry(rootHash, args.Peer, dest, t)
+		rootEntry, err := RetrieveEntry(rootHash, args.Peer, dest, t)
+		if err != nil {
+			return err
+		}
 		s := strings.Split(args.Path, "/")
 		if s[0] == "" {
 			s = s[1:]
@@ -77,7 +80,7 @@ func (t *Node) RetrieveEntryByPath(args *RetrieveEntryByPathArgs, reply *Entry) 
 		if s[len(s)-1] == "" {
 			s = s[:len(s)-1]
 		}
-		entry := FindEntryByPath(s, &rootEntry)
+		entry := FindEntryByPath(s, rootEntry)
 		if entry != nil {
 			*reply = *entry
 			return nil
@@ -108,7 +111,10 @@ func (t *Node) DisplayDirectoryPath(args *RetrieveEntryByPathArgs, reply *string
 		if ContactNodeBehindAddr(dests, t) != nil {
 			continue
 		}
-		rootEntry := RetrieveEntry(rootHash, args.Peer, dest, t)
+		rootEntry, err := RetrieveEntry(rootHash, args.Peer, dest, t)
+		if err != nil {
+			return err
+		}
 		s := strings.Split(args.Path, "/")
 		if s[0] == "" {
 			s = s[1:]
@@ -116,7 +122,7 @@ func (t *Node) DisplayDirectoryPath(args *RetrieveEntryByPathArgs, reply *string
 		if s[len(s)-1] == "" {
 			s = s[:len(s)-1]
 		}
-		str, err := DisplayDirectoryFromPath(s, &rootEntry)
+		str, err := DisplayDirectoryFromPath(s, rootEntry)
 		if err == nil {
 			*reply = str
 			return nil

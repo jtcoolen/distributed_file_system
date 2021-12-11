@@ -140,6 +140,7 @@ func processIncomingPacket(node *Node, addr *net.UDPAddr, packet []byte) {
 		log.Printf("packet len=%d", packetLength)
 		//log.Printf("packet len2=%d", packetLength-SignatureLength-nonceLength-1-uint16(headerLength))
 		packet = p
+		packetType = pType
 	}
 
 	switch packetType {

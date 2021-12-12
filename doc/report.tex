@@ -117,6 +117,18 @@ go run dfs/rpc_client download  -peer jch.irif.fr -hash <hash>
 
 go run dfs/rpc_client downloadFromPath -path /documents -peer jch.irif.fr
 \end{Verbatim}
+
+\subsubsection{Get peer root}
+In order to retrieve a peer's hash, run the following command:
+\begin{Verbatim}[breaklines=true, breakanywhere=true]
+go run dfs/rpc_client getPeerRoot -peer <peer>
+
+\subsubsection{Update directory}
+We can dynamically add a file (as a chunk) to the tree. This operation alters the hash of root.
+Hence we announce the new root hash to the server:
+\begin{Verbatim}[breaklines=true, breakanywhere=true]
+go run dfs/rpc_client updateDirectory -path <filepath> 
+
 \section{Architecture}
 A thread listens to incoming packets, parses them, and notifies other threads that the message was received through a callback mechanism. The following hash map \texttt{PendingPacketQueries map[uint32]chan []byte} holds the pending queries, indexed by the transaction ID. Each thread is notified when the packet is returned thanks to Go's channels.
 
